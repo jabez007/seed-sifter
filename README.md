@@ -54,13 +54,13 @@ The starter stack starts with one global climate gate, then a spawn-relative cli
 
 Spawn-relative local gates:
 
-- `Coastalness climate`
+- `Coastal`
   Window: X/Z `-128` to `128` around the spawn anchor
   `continentalness <= -1100`
-- `Warm sea climate`
+- `Warm sea`
   Window: X/Z `-256` to `256` around the spawn anchor
   Keeps the spawn-adjacent water biased warmer even though the larger central sea gate now accepts cold variants.
-  `temperature >= 500`
+  `temperature >= 1000`
   `continentalness <= -1800`
 - `Open terrain`
   Window: X/Z `-64` to `64` around the spawn anchor

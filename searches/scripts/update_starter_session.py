@@ -249,7 +249,7 @@ def build_biome_center_template(
 def build_coastalness_climate(base: Condition) -> Condition:
     condition = build_climate_template(
         base=base,
-        label="Coastalness climate",
+        label="Coastal",
         save=3,
         relative=2,
     )
@@ -286,7 +286,7 @@ def build_open_terrain_climate(base: Condition) -> Condition:
 def build_warm_sea_climate(base: Condition) -> Condition:
     condition = build_climate_template(
         base=base,
-        label="Warm sea climate",
+        label="Warm sea",
         save=4,
         relative=2,
     )
@@ -294,8 +294,8 @@ def build_warm_sea_climate(base: Condition) -> Condition:
     condition.z1 = -256
     condition.x2 = 256
     condition.z2 = 256
-    # Bias the central ocean toward warmer ocean variants.
-    condition.limok[NP_TEMPERATURE][0] = 500
+    # Bias the spawn-adjacent sea more strongly toward lukewarm/warm water.
+    condition.limok[NP_TEMPERATURE][0] = 1000
     condition.limok[NP_TEMPERATURE][1] = INT_MAX
     condition.limok[NP_CONTINENTALNESS][0] = INT_MIN
     condition.limok[NP_CONTINENTALNESS][1] = -1800
@@ -435,9 +435,11 @@ def main() -> None:
     original_lines = SESSION_PATH.read_text().splitlines()
     lines = []
     removable_labels = {
+        "Coastal",
         "Coastalness climate",
         "Open terrain climate",
         "Open terrain",
+        "Warm sea",
         "Warm sea climate",
         "Central sea coverage",
         "Mushroom island",
