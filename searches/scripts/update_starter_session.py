@@ -118,8 +118,8 @@ def set_biome_mask(condition: Condition, biome_ids: list[int]) -> None:
     condition.biomeToFindM = mutated
 
 
-def update_waterworld(condition: Condition) -> None:
-    set_label(condition, "Waterworld climate")
+def update_oceanic_climate(condition: Condition) -> None:
+    set_label(condition, "Oceanic climate")
     if condition.type == F_BIOME_SAMPLE:
         condition.type = F_CLIMATE_NOISE
         condition.biomeToFind = 0
@@ -546,7 +546,7 @@ def main() -> None:
 
     first_index = cond_indexes[0]
     first_condition = decode_condition(lines[first_index])
-    update_waterworld(first_condition)
+    update_oceanic_climate(first_condition)
     lines[first_index] = encode_condition(first_condition)
 
     if len(cond_indexes) < 2:
