@@ -1,115 +1,124 @@
 # seed-sifter
 
-`seed-sifter` stores `cubiomes-viewer` search artifacts.
+`seed-sifter` is a small workspace for reproducible `cubiomes-viewer` seed
+searches.
 
-The repo currently contains saved session files, exported CSVs, notes, and analysis artifacts for Minecraft seed searches. It is not a standalone application, library, or automated seed-finding pipeline.
+It is not a standalone application, library, or automated seed-finding
+pipeline. The repo currently focuses on one reusable starter session, one
+script that regenerates that session, and supporting notes about Minecraft
+worldgen and Cubiomes search strategy.
 
-## What This Repo Is For
+## Purpose
 
-- Keeping repeatable `cubiomes-viewer` search setups in one place
-- Recording the criteria behind a search, so results can be reproduced later
-- Storing supporting notes about worldgen, biome noise, and search strategy
+- Keep reusable `cubiomes-viewer` sessions under version control
+- Record search criteria and rationale alongside the saved sessions
+- Leave room for future search exports, analysis inputs, and shortlists
 
-## Repository Layout
+## Current Contents
 
-Current contents:
+- [`docs/`](./docs/) - supporting notes and background analysis
+- [`docs/Cubiomes Multi-Noise System Analysis.md`](./docs/Cubiomes%20Multi-Noise%20System%20Analysis.md) - reference notes on Cubiomes and Minecraft's multi-noise biome system
+- [`searches/viewer-search.session`](./searches/viewer-search.session) - starter `cubiomes-viewer` session with reusable default filters
+- [`searches/scripts/update_starter_session.py`](./searches/scripts/update_starter_session.py) - regenerates the starter session from a hard-coded condition set
 
-- [`docs/`](./docs/) - supporting notes and analysis
-- [`docs/Cubiomes Multi-Noise System Analysis.md`](./docs/Cubiomes%20Multi-Noise%20System%20Analysis.md) - background research on Cubiomes and Minecraft's multi-noise biome system
-- [`searches/viewer-search.session`](./searches/viewer-search.session) - starter `cubiomes-viewer` session for reusable default conditions
-- [`searches/`](./searches/) - one folder per seed-hunting investigation
-- [`searches/pale-spawns/`](./searches/pale-spawns/) - search artifacts for the `pale-spawns` investigation
+## Intended Search Layout
 
-Folder conventions:
+When a search grows beyond the shared starter session, create a dedicated folder
+under `searches/`:
 
 - `searches/<search-name>/sessions/` - saved `cubiomes-viewer` session files
-- `searches/<search-name>/data/raw/` - raw exports from broad scans
+- `searches/<search-name>/data/raw/` - broad raw exports
 - `searches/<search-name>/data/refined/` - narrowed follow-up exports
-- `searches/<search-name>/data/analysis-inputs/` - standalone inputs used by notebooks or ranking passes
+- `searches/<search-name>/data/analysis-inputs/` - files prepared for ranking or notebook work
 - `searches/<search-name>/analysis/` - notebooks or ad hoc analysis artifacts
 - `searches/<search-name>/results/` - shortlists or final candidate seeds
-- `notes/` or `docs/` - writeups explaining search goals, tradeoffs, and findings
+- `searches/<search-name>/notes.md` or `docs/` - search-specific writeups and decisions
 
-## How To Use This Repo
+## Workflow
 
-1. Open the relevant session or config in `cubiomes-viewer`.
-2. Review the accompanying notes, exports, or analysis files.
-3. Run or refine the search.
-4. Save updated sessions/configs back into the repo so the work stays reproducible.
-
-For larger searches, prefer creating a dedicated folder under `searches/` rather than dropping exports at repo root.
+1. Open [`searches/viewer-search.session`](./searches/viewer-search.session) in `cubiomes-viewer`.
+2. Review the notes in [`docs/`](./docs/) if you need the reasoning behind the filters.
+3. Run or refine the search in the viewer.
+4. If you change the shared starter condition set, update the generator script and regenerate the session with `python3 searches/scripts/update_starter_session.py`.
+5. For search-specific work, create a dedicated folder under `searches/` and keep the outputs there.
 
 ## Starter Session
 
-The starter session is [`searches/viewer-search.session`](./searches/viewer-search.session). It is meant to hold reusable default conditions.
+The starter session is meant to be a reusable baseline for water-heavy seeds
+with broad biome-climate variety around spawn and in the surrounding region.
 
-The starter stack starts with one global climate gate, then a spawn-relative climate stack, and ends with a larger global sea-coverage sample.
+In plain English, it is trying to find worlds with these traits:
 
-- `Waterworld climate`
-  Global coarse gate over X/Z `-2048` to `2048`.
-  Non-default limit: `continentalness <= -4550`
-- `Spawn anchor`
-  `Spawn` condition over X/Z `-1024` to `1024`.
-  Every condition listed through `Relief diversity` is relative to this anchor.
+- A central map that is more sea than land
+- A spawn area that is coastal and biased toward warmer nearby water
+- Enough flatter terrain near spawn to make early movement and building easier
+- A wider surrounding region that still includes several distinct climate families and some Pale Garden-leaning continental/weirdness pockets
+- At least one mushroom island in the central search area
 
-Spawn-relative local gates:
+The session is still a heuristic filter stack, not a guarantee of exact biome
+layouts. Most of the climate checks mean "this kind of terrain exists
+somewhere in the search area," not "the whole area looks like this."
 
-- `Coastal`
-  Window: X/Z `-128` to `128` around the spawn anchor
-  `continentalness <= -1100`
-- `Warm sea`
-  Window: X/Z `-256` to `256` around the spawn anchor
-  Keeps the spawn-adjacent water biased warmer even though the larger central sea gate now accepts cold variants.
-  `temperature >= 1000`
-  `continentalness <= -1800`
-- `Open terrain`
-  Window: X/Z `-64` to `64` around the spawn anchor
-  `erosion >= 1500`
-  `-2000 <= weirdness <= 2000`
+### Condition Map
 
-Spawn-relative regional gates:
+| Goal                   | Conditions                                                                                                                     | What they are trying to enforce                                                                                                                   |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Ocean-dominant world   | `Waterworld climate`, `Central sea coverage`                                                                                   | Keep the central region strongly water-heavy rather than mostly continental.                                                                      |
+| Coastal spawn          | `Spawn anchor`, `Coastal`, `Warm sea`                                                                                          | Bias spawn toward coast or open water, with the warmer-water check kept closer to spawn.                                                          |
+| Usable local terrain   | `Open terrain`                                                                                                                 | Improve odds of a less chaotic spawn area with easier early traversal and building space.                                                         |
+| Regional biome variety | `Hot/wet climate`, `Hot/dry climate`, `Taiga climate`, `Cherry Grove climate`, `Pale Garden climate`, `Dappled Forest climate` | Improve odds that the wider region includes multiple climate families and some Cherry Grove / Pale Garden / Dappled Forest-style terrain pockets. |
+| Rare central feature   | `Mushroom island`                                                                                                              | Require one meaningful `mushroom_fields` island in the central search area.                                                                       |
 
-- `Hot/wet climate`
-  Window: X/Z `-1536` to `1536` around the spawn anchor
-  `temperature >= 1000`
-  `humidity >= 1000`
-  `erosion >= 1000`
-- `Hot/dry climate`
-  Window: X/Z `-1536` to `1536` around the spawn anchor
-  `temperature >= 1000`
-  `-2500 <= humidity <= -500`
-- `Taiga climate`
-  Window: X/Z `-1536` to `1536` around the spawn anchor
-  `-2000 <= temperature <= 250`
-  `0 <= humidity <= 2000`
-- `Relief diversity`
-  Window: X/Z `-1536` to `1536` around the spawn anchor
-  `continentalness >= -500`
-  `erosion <= -500`
+### Exact Condition Summary
 
-Global coverage gate:
+| Condition                | Search area                          | Requirement                                                                                                                   |
+| :----------------------- | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| `Waterworld climate`     | Global X/Z `-2048` to `2048`         | `continentalness <= -4550`                                                                                                    |
+| `Spawn anchor`           | X/Z `-1024` to `1024`                | Establishes the spawn-relative reference point for later conditions                                                           |
+| `Coastal`                | Spawn-relative X/Z `-128` to `128`   | `continentalness <= -1100`                                                                                                    |
+| `Warm sea`               | Spawn-relative X/Z `-192` to `192`   | `temperature >= 2001`, `continentalness <= -1900`                                                                             |
+| `Open terrain`           | Spawn-relative X/Z `-64` to `64`     | `erosion >= 1500`, `-2000 <= weirdness <= 2000`                                                                               |
+| `Hot/wet climate`        | Spawn-relative X/Z `-1536` to `1536` | `1000 <= temperature <= 5500`, `humidity >= 1000`, `continentalness >= -1100`, `erosion >= 5500`                              |
+| `Hot/dry climate`        | Spawn-relative X/Z `-1536` to `1536` | `temperature >= 2000`, `humidity <= -1000`, `erosion <= 500`                                                                  |
+| `Taiga climate`          | Spawn-relative X/Z `-1536` to `1536` | `-4499 <= temperature <= -1500`, `humidity >= 1000`, `continentalness >= -1900`                                               |
+| `Cherry Grove climate`   | Spawn-relative X/Z `-1536` to `1536` | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666` |
+| `Pale Garden climate`    | Spawn-relative X/Z `-1536` to `1536` | `-1500 <= temperature <= 2000`, `humidity >= 3000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666`  |
+| `Dappled Forest climate` | Spawn-relative X/Z `-1536` to `1536` | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= -1899`, `weirdness >= 2666`                          |
+| `Central sea coverage`   | Global X/Z `-1536` to `1536`         | At least `53%` ocean-family biome coverage at `95%` confidence                                                                |
+| `Mushroom island`        | Global X/Z `-1536` to `1536`         | One `mushroom_fields` island, minimum size `256`, border tolerance `2`                                                        |
 
-- `Central sea coverage`
-  Global sample over X/Z `-1536` to `1536`
-  Allowed sampled biomes: `ocean`, `deep_ocean`, `cold_ocean`, `warm_ocean`, `lukewarm_ocean`, `deep_cold_ocean`, `deep_lukewarm_ocean`
-  Minimum sampled coverage: `53%`
-  Confidence: `95%`
-  Kept after the climate conditions so the cheaper climate filters can reject seeds first.
-- `Mushroom island`
-  Global `Locate biome center` search over X/Z `-1536` to `1536`
-  Target biome: `mushroom_fields`
-  Required instances: `1`
-  Minimum biome size: `256` (about `16` square chunks in the viewer's size estimate)
-  Border tolerance: `2` to allow slight edge irregularity without turning this into a loose shape match
+### Target Biome Reference
+
+These are the cubiomes biome-parameter ranges for the main biomes the starter
+session is trying to bias toward. `Any` means cubiomes does not constrain that
+parameter for the biome. `Dappled Forest` is an estimate based on current
+snapshot descriptions, not a verified cubiomes row.
+
+| Biome                          | Temperature    | Humidity     | Continentalness | Erosion      | Weirdness | Why it matters                                                                                                                               |
+| :----------------------------- | :------------- | :----------- | :-------------- | :----------- | :-------- | :------------------------------------------------------------------------------------------------------------------------------------------- |
+| `swamp`                        | `-4500..2000`  | `Any`        | `>= -1100`      | `>= 5500`    | `Any`     | Helps explain why the hot/wet filter uses very high erosion and modest inlandness.                                                           |
+| `mangrove_swamp`               | `>= 2000`      | `Any`        | `>= -1100`      | `>= 5500`    | `Any`     | Shares the same strong erosion signal as swamp, but in a hotter band.                                                                        |
+| `sparse_jungle`                | `2000..5500`   | `1000..3000` | `>= -1899`      | `Any`        | `>= -500` | A useful jungle-side target that still fits the hot/wet filter without demanding full jungle space.                                          |
+| `bamboo_jungle`                | `2000..5500`   | `>= 3000`    | `>= -1899`      | `Any`        | `>= -500` | Pushes the hot/wet filter toward hotter, wetter jungle-family terrain.                                                                       |
+| `taiga`                        | `<= -1500`     | `>= 1000`    | `>= -1900`      | `Any`        | `Any`     | The base taiga target: cool, moist, and broadly inland.                                                                                      |
+| `old_growth_pine_taiga`        | `-4500..-1500` | `>= 3000`    | `>= -1899`      | `Any`        | `>= -500` | One half of the old-growth split; shares the taiga temperature band but wants much higher humidity.                                          |
+| `old_growth_spruce_taiga`      | `-4500..-1500` | `>= 3000`    | `>= -1900`      | `Any`        | `<= -500` | The other old-growth half; same cool/wet band as pine, but on the opposite weirdness side.                                                   |
+| `savanna`                      | `2000..5500`   | `<= -1000`   | `>= -1900`      | `Any`        | `Any`     | One of the main reasons the hot/dry filter starts at higher temperature and drier humidity.                                                  |
+| `savanna_plateau`              | `2000..5500`   | `<= -1000`   | `>= -1100`      | `<= 500`     | `Any`     | Contributes the low-erosion signal that keeps hot/dry closer to savanna/badlands terrain.                                                    |
+| `badlands`                     | `>= 5500`      | `<= 1000`    | `>= -1899`      | `<= 500`     | `Any`     | Shares the low-erosion requirement with plateaus and helps justify the badlands lean in hot/dry.                                             |
+| `eroded_badlands`              | `>= 5500`      | `<= -1000`   | `>= -1899`      | `<= 500`     | `>= -500` | A stricter hot/dry endpoint that reinforces the low-erosion and drier-humidity bias.                                                         |
+| `cherry_grove`                 | `-4500..2000`  | `<= -1000`   | `>= 300`        | `-7799..500` | `>= 2666` | Relevant because it shares the same inland, low-erosion, high-weirdness shape as Pale Garden, but in a colder/drier climate band.            |
+| `pale_garden`                  | `-1500..2000`  | `>= 3000`    | `>= 300`        | `-7799..500` | `>= 2666` | This now matches the full cubiomes Pale Garden climate box, which keeps it more distinct from Cherry Grove.                                  |
+| `dappled_forest` _(estimated)_ | `-4500..2000`  | `<= -1000`   | `>= -1899`      | `Any`        | `>= 2666` | Estimated from current descriptions: cold, very dry, high-weirdness land that can still appear across varied terrain and near colder coasts. |
 
 Current direction:
 
-- Prefer `Climate parameters` for most coarse reusable starter conditions.
-- Keep a small number of explicit biome sample checks when they express a real requirement more directly than climate noise alone.
+- Prefer climate-parameter gates for coarse reusable filtering
+- Keep explicit biome checks only where they capture a real requirement better than climate noise alone
 
 ## Non-Goals
 
-At least for now, this repo is not trying to be:
+This repo is not trying to be:
 
 - A general-purpose Minecraft tooling project
 - A polished CLI or web app
@@ -117,6 +126,9 @@ At least for now, this repo is not trying to be:
 
 ## Notes
 
-If you add new searches, use directory and file names that describe the search target or stage clearly.
+Use descriptive names for search folders and artifacts so runs are still legible
+later.
 
-CSV files under `searches/<search-name>/data/` are tracked with Git LFS via [`.gitattributes`](/home/qoc_user/source/personal/seed-sifter/.gitattributes). Run `git lfs install` once on a machine before cloning or committing LFS-backed data.
+CSV files under `searches/<search-name>/data/` are tracked with Git LFS via
+[`.gitattributes`](./.gitattributes). Run `git lfs install` once on a machine
+before cloning or committing LFS-backed data.

@@ -290,15 +290,16 @@ def build_warm_sea_climate(base: Condition) -> Condition:
         save=4,
         relative=2,
     )
-    condition.x1 = -256
-    condition.z1 = -256
-    condition.x2 = 256
-    condition.z2 = 256
-    # Bias the spawn-adjacent sea more strongly toward lukewarm/warm water.
-    condition.limok[NP_TEMPERATURE][0] = 1000
+    condition.x1 = -192
+    condition.z1 = -192
+    condition.x2 = 192
+    condition.z2 = 192
+    # Use the cubiomes lukewarm/warm-ocean temperature boundary so this is
+    # less often satisfied by neutral ocean near spawn.
+    condition.limok[NP_TEMPERATURE][0] = 2001
     condition.limok[NP_TEMPERATURE][1] = INT_MAX
     condition.limok[NP_CONTINENTALNESS][0] = INT_MIN
-    condition.limok[NP_CONTINENTALNESS][1] = -1800
+    condition.limok[NP_CONTINENTALNESS][1] = -1900
     return condition
 
 
@@ -362,13 +363,17 @@ def build_hot_wet_diversity_climate(base: Condition) -> Condition:
     condition.z1 = -1536
     condition.x2 = 1536
     condition.z2 = 1536
-    # Improve odds of swamp / jungle-adjacent climate somewhere in the wider area.
+    # Approximate a useful overlap between swamp / mangrove-swamp and the
+    # sparser jungle variants. A single climate box cannot isolate exactly
+    # those four biomes, so this leans swampy with very high erosion while
+    # keeping enough heat and humidity for sparse/bamboo jungle terrain too.
     condition.limok[NP_TEMPERATURE][0] = 1000
-    condition.limok[NP_TEMPERATURE][1] = INT_MAX
+    condition.limok[NP_TEMPERATURE][1] = 5500
     condition.limok[NP_HUMIDITY][0] = 1000
     condition.limok[NP_HUMIDITY][1] = INT_MAX
-    # Slightly favor flatter hot/wet terrain, which should lean more swamp than jungle.
-    condition.limok[NP_EROSION][0] = 1000
+    condition.limok[NP_CONTINENTALNESS][0] = -1100
+    condition.limok[NP_CONTINENTALNESS][1] = INT_MAX
+    condition.limok[NP_EROSION][0] = 5500
     condition.limok[NP_EROSION][1] = INT_MAX
     return condition
 
@@ -384,11 +389,13 @@ def build_hot_dry_diversity_climate(base: Condition) -> Condition:
     condition.z1 = -1536
     condition.x2 = 1536
     condition.z2 = 1536
-    # Improve odds of savanna / badlands-adjacent climate somewhere in the wider area.
-    condition.limok[NP_TEMPERATURE][0] = 1000
+    # Lean toward savanna / badlands terrain rather than generic hot-dry space.
+    condition.limok[NP_TEMPERATURE][0] = 2000
     condition.limok[NP_TEMPERATURE][1] = INT_MAX
-    condition.limok[NP_HUMIDITY][0] = -2500
-    condition.limok[NP_HUMIDITY][1] = -500
+    condition.limok[NP_HUMIDITY][0] = INT_MIN
+    condition.limok[NP_HUMIDITY][1] = -1000
+    condition.limok[NP_EROSION][0] = INT_MIN
+    condition.limok[NP_EROSION][1] = 500
     return condition
 
 
@@ -403,31 +410,95 @@ def build_taiga_climate(base: Condition) -> Condition:
     condition.z1 = -1536
     condition.x2 = 1536
     condition.z2 = 1536
-    # Cool, moderately moist inland climate intended to improve taiga-family odds.
-    condition.limok[NP_TEMPERATURE][0] = -2000
-    condition.limok[NP_TEMPERATURE][1] = 250
-    condition.limok[NP_HUMIDITY][0] = 0
-    condition.limok[NP_HUMIDITY][1] = 2000
+    # Target regular taiga plus the two old-growth taiga variants while
+    # excluding snowy taiga. Cubiomes puts snowy_taiga at temperature <= -4500,
+    # so keeping the lower bound just above that cuts it out cleanly.
+    condition.limok[NP_TEMPERATURE][0] = -4499
+    condition.limok[NP_TEMPERATURE][1] = -1500
+    condition.limok[NP_HUMIDITY][0] = 1000
+    condition.limok[NP_HUMIDITY][1] = INT_MAX
+    condition.limok[NP_CONTINENTALNESS][0] = -1900
+    condition.limok[NP_CONTINENTALNESS][1] = INT_MAX
     return condition
 
 
-def build_relief_diversity_climate(base: Condition) -> Condition:
+def build_cherry_grove_climate(base: Condition) -> Condition:
     condition = build_climate_template(
         base=base,
-        label="Relief diversity",
-        save=9,
+        label="Cherry Grove climate",
+        save=13,
         relative=2,
     )
     condition.x1 = -1536
     condition.z1 = -1536
     condition.x2 = 1536
     condition.z2 = 1536
-    # Require some inland, lower-erosion terrain somewhere in the wider area
-    # so the world is not purely flat/coastal.
-    condition.limok[NP_CONTINENTALNESS][0] = -500
+    # Use the cubiomes Cherry Grove biome row directly. Unlike the Pale Garden
+    # helper, this condition keeps the full climate box because the colder,
+    # drier band is part of what distinguishes Cherry Grove from the other
+    # high-weirdness inland terrain targets.
+    condition.limok[NP_TEMPERATURE][0] = -4500
+    condition.limok[NP_TEMPERATURE][1] = 2000
+    condition.limok[NP_HUMIDITY][0] = INT_MIN
+    condition.limok[NP_HUMIDITY][1] = -1000
+    condition.limok[NP_CONTINENTALNESS][0] = 300
     condition.limok[NP_CONTINENTALNESS][1] = INT_MAX
-    condition.limok[NP_EROSION][0] = INT_MIN
-    condition.limok[NP_EROSION][1] = -500
+    condition.limok[NP_EROSION][0] = -7799
+    condition.limok[NP_EROSION][1] = 500
+    condition.limok[NP_WEIRDNESS][0] = 2666
+    condition.limok[NP_WEIRDNESS][1] = INT_MAX
+    return condition
+
+
+def build_pale_garden_climate(base: Condition) -> Condition:
+    condition = build_climate_template(
+        base=base,
+        label="Pale Garden climate",
+        save=12,
+        relative=2,
+    )
+    condition.x1 = -1536
+    condition.z1 = -1536
+    condition.x2 = 1536
+    condition.z2 = 1536
+    # Use the full cubiomes Pale Garden biome row so this condition stays
+    # distinct from Cherry Grove instead of only matching the shared inland /
+    # low-erosion / high-weirdness terrain shape.
+    condition.limok[NP_TEMPERATURE][0] = -1500
+    condition.limok[NP_TEMPERATURE][1] = 2000
+    condition.limok[NP_HUMIDITY][0] = 3000
+    condition.limok[NP_HUMIDITY][1] = INT_MAX
+    condition.limok[NP_CONTINENTALNESS][0] = 300
+    condition.limok[NP_CONTINENTALNESS][1] = INT_MAX
+    condition.limok[NP_EROSION][0] = -7799
+    condition.limok[NP_EROSION][1] = 500
+    condition.limok[NP_WEIRDNESS][0] = 2666
+    condition.limok[NP_WEIRDNESS][1] = INT_MAX
+    return condition
+
+
+def build_dappled_forest_climate(base: Condition) -> Condition:
+    condition = build_climate_template(
+        base=base,
+        label="Dappled Forest climate",
+        save=14,
+        relative=2,
+    )
+    condition.x1 = -1536
+    condition.z1 = -1536
+    condition.x2 = 1536
+    condition.z2 = 1536
+    # Estimated from current snapshot descriptions, not a verified cubiomes row.
+    # The intent is cold, very dry, high-weirdness land that can still appear
+    # across a broad range of terrain and relatively near colder coasts.
+    condition.limok[NP_TEMPERATURE][0] = -4500
+    condition.limok[NP_TEMPERATURE][1] = 2000
+    condition.limok[NP_HUMIDITY][0] = INT_MIN
+    condition.limok[NP_HUMIDITY][1] = -1000
+    condition.limok[NP_CONTINENTALNESS][0] = -1899
+    condition.limok[NP_CONTINENTALNESS][1] = INT_MAX
+    condition.limok[NP_WEIRDNESS][0] = 2666
+    condition.limok[NP_WEIRDNESS][1] = INT_MAX
     return condition
 
 
@@ -449,6 +520,9 @@ def main() -> None:
         "Hot/wet climate",
         "Hot/dry climate",
         "Taiga climate",
+        "Cherry Grove climate",
+        "Pale Garden climate",
+        "Dappled Forest climate",
         "Relief diversity climate",
         "Relief diversity",
         "Open terrain",
@@ -489,9 +563,11 @@ def main() -> None:
     lines.insert(insert_at + 3, encode_condition(build_hot_wet_diversity_climate(first_condition)))
     lines.insert(insert_at + 4, encode_condition(build_hot_dry_diversity_climate(first_condition)))
     lines.insert(insert_at + 5, encode_condition(build_taiga_climate(first_condition)))
-    lines.insert(insert_at + 6, encode_condition(build_relief_diversity_climate(first_condition)))
-    lines.insert(insert_at + 7, encode_condition(build_central_sea_coverage(first_condition)))
-    lines.insert(insert_at + 8, encode_condition(build_mushroom_island(first_condition)))
+    lines.insert(insert_at + 6, encode_condition(build_cherry_grove_climate(first_condition)))
+    lines.insert(insert_at + 7, encode_condition(build_pale_garden_climate(first_condition)))
+    lines.insert(insert_at + 8, encode_condition(build_dappled_forest_climate(first_condition)))
+    lines.insert(insert_at + 9, encode_condition(build_central_sea_coverage(first_condition)))
+    lines.insert(insert_at + 10, encode_condition(build_mushroom_island(first_condition)))
 
     SESSION_PATH.write_text("\n".join(lines) + "\n")
 
