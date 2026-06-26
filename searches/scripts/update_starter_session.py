@@ -24,6 +24,8 @@ NP_DEPTH = 4
 NP_WEIRDNESS = 5
 
 BIOME_MUSHROOM_FIELDS = 14
+BIOME_CHERRY_GROVE = 185
+BIOME_PALE_GARDEN = 186
 BIOME_OCEAN = 0
 BIOME_DEEP_OCEAN = 24
 BIOME_COLD_OCEAN = 46
@@ -352,6 +354,54 @@ def build_mushroom_island(base: Condition) -> Condition:
     return condition
 
 
+def build_biome_presence(
+    base: Condition,
+    label: str,
+    save: int,
+    biome_id: int,
+    min_size: int,
+) -> Condition:
+    condition = build_biome_center_template(
+        base=base,
+        label=label,
+        save=save,
+        relative=0,
+    )
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
+    # Confirm the biome actually generates somewhere in the same area the matching
+    # climate gate covers, instead of trusting the climate box alone. Biome
+    # assignment is a nearest-neighbor vote in 6D climate space, so a seed can
+    # satisfy a biome's nominal climate box while every column still resolves to a
+    # neighboring biome. count=1 means "at least one real occurrence," which is the
+    # requirement the climate gate could only approximate.
+    #
+    # min_size is the minimum connected-cluster size at the F_BIOME_CENTER 1:4
+    # scan scale, measured in cells of ~4x4 blocks (~16 block^2 each). It exists to
+    # reject miniscule slivers of the biome. Trade-off: too high and rare biomes
+    # (Pale Garden especially) get filtered out entirely as false negatives.
+    condition.biomeId = biome_id
+    condition.biomeSize = min_size
+    condition.tol = 2
+    condition.count = 1
+    return condition
+
+
+def build_cherry_grove_presence(base: Condition) -> Condition:
+    # 384 cells ~= 6144 block^2 (~78x78). A sizable grove worth the trip; trims the
+    # small-but-real tail above the previous 256-cell (~64x64) floor.
+    return build_biome_presence(base, "Cherry Grove present", 15, BIOME_CHERRY_GROVE, 384)
+
+
+def build_pale_garden_presence(base: Condition) -> Condition:
+    # 128 cells ~= 2048 block^2 (~45x45). Deliberately lower than Cherry Grove:
+    # Pale Garden is a rare dark-forest sub-selection and generates in smaller
+    # pockets, so a higher floor would push the hit rate toward zero.
+    return build_biome_presence(base, "Pale Garden present", 16, BIOME_PALE_GARDEN, 128)
+
+
 def build_hot_wet_diversity_climate(base: Condition) -> Condition:
     condition = build_climate_template(
         base=base,
@@ -359,10 +409,10 @@ def build_hot_wet_diversity_climate(base: Condition) -> Condition:
         save=6,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Approximate a useful overlap between swamp / mangrove-swamp and the
     # sparser jungle variants. A single climate box cannot isolate exactly
     # those four biomes, so this leans swampy with very high erosion while
@@ -385,10 +435,10 @@ def build_hot_dry_diversity_climate(base: Condition) -> Condition:
         save=7,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Lean toward savanna / badlands terrain rather than generic hot-dry space.
     condition.limok[NP_TEMPERATURE][0] = 2000
     condition.limok[NP_TEMPERATURE][1] = INT_MAX
@@ -406,10 +456,10 @@ def build_taiga_climate(base: Condition) -> Condition:
         save=8,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Target regular taiga plus the two old-growth taiga variants while
     # excluding snowy taiga. Cubiomes puts snowy_taiga at temperature <= -4500,
     # so keeping the lower bound just above that cuts it out cleanly.
@@ -429,10 +479,10 @@ def build_cherry_grove_climate(base: Condition) -> Condition:
         save=13,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Use the cubiomes Cherry Grove biome row directly. Unlike the Pale Garden
     # helper, this condition keeps the full climate box because the colder,
     # drier band is part of what distinguishes Cherry Grove from the other
@@ -457,10 +507,10 @@ def build_pale_garden_climate(base: Condition) -> Condition:
         save=12,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Use the full cubiomes Pale Garden biome row so this condition stays
     # distinct from Cherry Grove instead of only matching the shared inland /
     # low-erosion / high-weirdness terrain shape.
@@ -484,10 +534,10 @@ def build_dappled_forest_climate(base: Condition) -> Condition:
         save=14,
         relative=0,
     )
-    condition.x1 = -2048
-    condition.z1 = -2048
-    condition.x2 = 2048
-    condition.z2 = 2048
+    condition.x1 = -1792
+    condition.z1 = -1792
+    condition.x2 = 1792
+    condition.z2 = 1792
     # Estimated from current snapshot descriptions, not a verified cubiomes row.
     # The intent is cold, very dry, high-weirdness land that can still appear
     # across a broad range of terrain and relatively near colder coasts.
@@ -522,6 +572,8 @@ def main() -> None:
         "Taiga climate",
         "Cherry Grove climate",
         "Pale Garden climate",
+        "Cherry Grove present",
+        "Pale Garden present",
         "Dappled Forest climate",
         "Relief diversity climate",
         "Relief diversity",
@@ -556,20 +608,36 @@ def main() -> None:
     update_spawn_anchor(second_condition)
     lines[second_index] = encode_condition(second_condition)
 
+    # Root-level conditions form an implicit AND. They are listed cheap-first so
+    # the scanner culls on the fast climate gates before paying for the heavier
+    # biome scans. The two "* present" biome-presence checks are the most
+    # expensive conditions, so they run last, after every climate gate (including
+    # their own Cherry Grove / Pale Garden gates) and the other biome scans have
+    # already had a chance to reject the seed.
+    root_conditions = [
+        build_hot_wet_diversity_climate(first_condition),
+        build_hot_dry_diversity_climate(first_condition),
+        build_taiga_climate(first_condition),
+        build_cherry_grove_climate(first_condition),
+        build_pale_garden_climate(first_condition),
+        build_dappled_forest_climate(first_condition),
+        build_central_sea_coverage(first_condition),
+        build_mushroom_island(first_condition),
+        build_cherry_grove_presence(first_condition),
+        build_pale_garden_presence(first_condition),
+    ]
     root_insert_at = second_index
-    lines.insert(root_insert_at, encode_condition(build_hot_wet_diversity_climate(first_condition)))
-    lines.insert(root_insert_at + 1, encode_condition(build_hot_dry_diversity_climate(first_condition)))
-    lines.insert(root_insert_at + 2, encode_condition(build_taiga_climate(first_condition)))
-    lines.insert(root_insert_at + 3, encode_condition(build_cherry_grove_climate(first_condition)))
-    lines.insert(root_insert_at + 4, encode_condition(build_pale_garden_climate(first_condition)))
-    lines.insert(root_insert_at + 5, encode_condition(build_dappled_forest_climate(first_condition)))
-    lines.insert(root_insert_at + 6, encode_condition(build_central_sea_coverage(first_condition)))
-    lines.insert(root_insert_at + 7, encode_condition(build_mushroom_island(first_condition)))
+    for offset, condition in enumerate(root_conditions):
+        lines.insert(root_insert_at + offset, encode_condition(condition))
 
-    spawn_insert_at = second_index + 9
-    lines.insert(spawn_insert_at, encode_condition(build_coastalness_climate(first_condition)))
-    lines.insert(spawn_insert_at + 1, encode_condition(build_warm_sea_climate(first_condition)))
-    lines.insert(spawn_insert_at + 2, encode_condition(build_open_terrain_climate(first_condition)))
+    spawn_conditions = [
+        build_coastalness_climate(first_condition),
+        build_warm_sea_climate(first_condition),
+        build_open_terrain_climate(first_condition),
+    ]
+    spawn_insert_at = second_index + len(root_conditions) + 1
+    for offset, condition in enumerate(spawn_conditions):
+        lines.insert(spawn_insert_at + offset, encode_condition(condition))
 
     SESSION_PATH.write_text("\n".join(lines) + "\n")
 
