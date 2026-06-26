@@ -563,13 +563,13 @@ def main() -> None:
     lines.insert(root_insert_at + 3, encode_condition(build_cherry_grove_climate(first_condition)))
     lines.insert(root_insert_at + 4, encode_condition(build_pale_garden_climate(first_condition)))
     lines.insert(root_insert_at + 5, encode_condition(build_dappled_forest_climate(first_condition)))
+    lines.insert(root_insert_at + 6, encode_condition(build_central_sea_coverage(first_condition)))
+    lines.insert(root_insert_at + 7, encode_condition(build_mushroom_island(first_condition)))
 
-    spawn_insert_at = second_index + 7
+    spawn_insert_at = second_index + 9
     lines.insert(spawn_insert_at, encode_condition(build_coastalness_climate(first_condition)))
     lines.insert(spawn_insert_at + 1, encode_condition(build_warm_sea_climate(first_condition)))
     lines.insert(spawn_insert_at + 2, encode_condition(build_open_terrain_climate(first_condition)))
-    lines.insert(spawn_insert_at + 3, encode_condition(build_central_sea_coverage(first_condition)))
-    lines.insert(spawn_insert_at + 4, encode_condition(build_mushroom_island(first_condition)))
 
     SESSION_PATH.write_text("\n".join(lines) + "\n")
 
