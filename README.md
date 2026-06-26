@@ -52,7 +52,7 @@ In plain English, it is trying to find worlds with these traits:
 - A central map that is more sea than land
 - A spawn area that is coastal and biased toward warmer nearby water
 - Enough flatter terrain near spawn to make early movement and building easier
-- A wider surrounding region that still includes several distinct climate families and some Pale Garden-leaning continental/weirdness pockets
+- A central surrounding region that still includes several distinct climate families and some Pale Garden-leaning continental/weirdness pockets
 - At least one mushroom island in the central search area
 
 The session is still a heuristic filter stack, not a guarantee of exact biome
@@ -61,31 +61,30 @@ somewhere in the search area," not "the whole area looks like this."
 
 ### Condition Map
 
-| Goal                   | Conditions                                                                                                                     | What they are trying to enforce                                                                                                                   |
-| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Ocean-dominant world   | `Waterworld climate`, `Central sea coverage`                                                                                   | Keep the central region strongly water-heavy rather than mostly continental.                                                                      |
-| Coastal spawn          | `Spawn anchor`, `Coastal`, `Warm sea`                                                                                          | Bias spawn toward coast or open water, with the warmer-water check kept closer to spawn.                                                          |
-| Usable local terrain   | `Open terrain`                                                                                                                 | Improve odds of a less chaotic spawn area with easier early traversal and building space.                                                         |
-| Regional biome variety | `Hot/wet climate`, `Hot/dry climate`, `Taiga climate`, `Cherry Grove climate`, `Pale Garden climate`, `Dappled Forest climate` | Improve odds that the wider region includes multiple climate families and some Cherry Grove / Pale Garden / Dappled Forest-style terrain pockets. |
-| Rare central feature   | `Mushroom island`                                                                                                              | Require one meaningful `mushroom_fields` island in the central search area.                                                                       |
+| Goal                   | Conditions                                                                                                                     | What they are trying to enforce                                                                                                                                                                      |
+| :--------------------- | :----------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ocean-dominant world   | `Waterworld climate`, `Central sea coverage`                                                                                   | Keep the central region strongly water-heavy rather than mostly continental.                                                                                                                         |
+| Coastal spawn          | `Spawn anchor`, `Coastal`, `Warm sea`, `Open terrain`                                                                          | Bias spawn toward coast or open water, with warmer nearby sea and a somewhat easier local terrain patch.                                                                                             |
+| Regional biome variety | `Hot/wet climate`, `Hot/dry climate`, `Taiga climate`, `Cherry Grove climate`, `Pale Garden climate`, `Dappled Forest climate` | Improve odds that the central search region includes multiple climate families and some Cherry Grove / Pale Garden / Dappled Forest-style terrain pockets without tying those checks to exact spawn. |
+| Rare central feature   | `Mushroom island`                                                                                                              | Require one meaningful `mushroom_fields` island in the central search area.                                                                                                                          |
 
 ### Exact Condition Summary
 
-| Condition                | Search area                          | Requirement                                                                                                                   |
-| :----------------------- | :----------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
-| `Waterworld climate`     | Global X/Z `-2048` to `2048`         | `continentalness <= -4550`                                                                                                    |
-| `Spawn anchor`           | X/Z `-1024` to `1024`                | Establishes the spawn-relative reference point for later conditions                                                           |
-| `Coastal`                | Spawn-relative X/Z `-128` to `128`   | `continentalness <= -1100`                                                                                                    |
-| `Warm sea`               | Spawn-relative X/Z `-192` to `192`   | `temperature >= 2001`, `continentalness <= -1900`                                                                             |
-| `Open terrain`           | Spawn-relative X/Z `-64` to `64`     | `erosion >= 1500`, `-2000 <= weirdness <= 2000`                                                                               |
-| `Hot/wet climate`        | Spawn-relative X/Z `-1536` to `1536` | `1000 <= temperature <= 5500`, `humidity >= 1000`, `continentalness >= -1100`, `erosion >= 5500`                              |
-| `Hot/dry climate`        | Spawn-relative X/Z `-1536` to `1536` | `temperature >= 2000`, `humidity <= -1000`, `erosion <= 500`                                                                  |
-| `Taiga climate`          | Spawn-relative X/Z `-1536` to `1536` | `-4499 <= temperature <= -1500`, `humidity >= 1000`, `continentalness >= -1900`                                               |
-| `Cherry Grove climate`   | Spawn-relative X/Z `-1536` to `1536` | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666` |
-| `Pale Garden climate`    | Spawn-relative X/Z `-1536` to `1536` | `-1500 <= temperature <= 2000`, `humidity >= 3000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666`  |
-| `Dappled Forest climate` | Spawn-relative X/Z `-1536` to `1536` | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= -1899`, `weirdness >= 2666`                          |
-| `Central sea coverage`   | Global X/Z `-1536` to `1536`         | At least `53%` ocean-family biome coverage at `95%` confidence                                                                |
-| `Mushroom island`        | Global X/Z `-1536` to `1536`         | One `mushroom_fields` island, minimum size `256`, border tolerance `2`                                                        |
+| Condition                | Search area                        | Requirement                                                                                                                   |
+| :----------------------- | :--------------------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| `Waterworld climate`     | Global X/Z `-2048` to `2048`       | `continentalness <= -4550`                                                                                                    |
+| `Hot/wet climate`        | Global X/Z `-2048` to `2048`       | `1000 <= temperature <= 5500`, `humidity >= 1000`, `continentalness >= -1100`, `erosion >= 5500`                              |
+| `Hot/dry climate`        | Global X/Z `-2048` to `2048`       | `temperature >= 2000`, `humidity <= -1000`, `erosion <= 500`                                                                  |
+| `Taiga climate`          | Global X/Z `-2048` to `2048`       | `-4499 <= temperature <= -1500`, `humidity >= 1000`, `continentalness >= -1900`                                               |
+| `Cherry Grove climate`   | Global X/Z `-2048` to `2048`       | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666` |
+| `Pale Garden climate`    | Global X/Z `-2048` to `2048`       | `-1500 <= temperature <= 2000`, `humidity >= 3000`, `continentalness >= 300`, `-7799 <= erosion <= 500`, `weirdness >= 2666`  |
+| `Dappled Forest climate` | Global X/Z `-2048` to `2048`       | `-4500 <= temperature <= 2000`, `humidity <= -1000`, `continentalness >= -1899`, `weirdness >= 2666`                          |
+| `Spawn anchor`           | X/Z `-1024` to `1024`              | Establishes the spawn-relative reference point for the local spawn checks only                                                |
+| `Coastal`                | Spawn-relative X/Z `-128` to `128` | `continentalness <= -1100`                                                                                                    |
+| `Warm sea`               | Spawn-relative X/Z `-192` to `192` | `temperature >= 2001`, `continentalness <= -1900`                                                                             |
+| `Open terrain`           | Spawn-relative X/Z `-64` to `64`   | `erosion >= 1500`, `-2000 <= weirdness <= 2000`                                                                               |
+| `Central sea coverage`   | Central X/Z `-1536` to `1536`      | At least `53%` ocean-family biome coverage at `95%` confidence                                                                |
+| `Mushroom island`        | Central X/Z `-1536` to `1536`      | One `mushroom_fields` island, minimum size `256`, border tolerance `2`                                                        |
 
 ### Target Biome Reference
 

@@ -357,12 +357,12 @@ def build_hot_wet_diversity_climate(base: Condition) -> Condition:
         base=base,
         label="Hot/wet climate",
         save=6,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Approximate a useful overlap between swamp / mangrove-swamp and the
     # sparser jungle variants. A single climate box cannot isolate exactly
     # those four biomes, so this leans swampy with very high erosion while
@@ -383,12 +383,12 @@ def build_hot_dry_diversity_climate(base: Condition) -> Condition:
         base=base,
         label="Hot/dry climate",
         save=7,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Lean toward savanna / badlands terrain rather than generic hot-dry space.
     condition.limok[NP_TEMPERATURE][0] = 2000
     condition.limok[NP_TEMPERATURE][1] = INT_MAX
@@ -404,12 +404,12 @@ def build_taiga_climate(base: Condition) -> Condition:
         base=base,
         label="Taiga climate",
         save=8,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Target regular taiga plus the two old-growth taiga variants while
     # excluding snowy taiga. Cubiomes puts snowy_taiga at temperature <= -4500,
     # so keeping the lower bound just above that cuts it out cleanly.
@@ -427,12 +427,12 @@ def build_cherry_grove_climate(base: Condition) -> Condition:
         base=base,
         label="Cherry Grove climate",
         save=13,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Use the cubiomes Cherry Grove biome row directly. Unlike the Pale Garden
     # helper, this condition keeps the full climate box because the colder,
     # drier band is part of what distinguishes Cherry Grove from the other
@@ -455,12 +455,12 @@ def build_pale_garden_climate(base: Condition) -> Condition:
         base=base,
         label="Pale Garden climate",
         save=12,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Use the full cubiomes Pale Garden biome row so this condition stays
     # distinct from Cherry Grove instead of only matching the shared inland /
     # low-erosion / high-weirdness terrain shape.
@@ -482,12 +482,12 @@ def build_dappled_forest_climate(base: Condition) -> Condition:
         base=base,
         label="Dappled Forest climate",
         save=14,
-        relative=2,
+        relative=0,
     )
-    condition.x1 = -1536
-    condition.z1 = -1536
-    condition.x2 = 1536
-    condition.z2 = 1536
+    condition.x1 = -2048
+    condition.z1 = -2048
+    condition.x2 = 2048
+    condition.z2 = 2048
     # Estimated from current snapshot descriptions, not a verified cubiomes row.
     # The intent is cold, very dry, high-weirdness land that can still appear
     # across a broad range of terrain and relatively near colder coasts.
@@ -556,18 +556,20 @@ def main() -> None:
     update_spawn_anchor(second_condition)
     lines[second_index] = encode_condition(second_condition)
 
-    insert_at = second_index + 1
-    lines.insert(insert_at, encode_condition(build_coastalness_climate(first_condition)))
-    lines.insert(insert_at + 1, encode_condition(build_warm_sea_climate(first_condition)))
-    lines.insert(insert_at + 2, encode_condition(build_open_terrain_climate(first_condition)))
-    lines.insert(insert_at + 3, encode_condition(build_hot_wet_diversity_climate(first_condition)))
-    lines.insert(insert_at + 4, encode_condition(build_hot_dry_diversity_climate(first_condition)))
-    lines.insert(insert_at + 5, encode_condition(build_taiga_climate(first_condition)))
-    lines.insert(insert_at + 6, encode_condition(build_cherry_grove_climate(first_condition)))
-    lines.insert(insert_at + 7, encode_condition(build_pale_garden_climate(first_condition)))
-    lines.insert(insert_at + 8, encode_condition(build_dappled_forest_climate(first_condition)))
-    lines.insert(insert_at + 9, encode_condition(build_central_sea_coverage(first_condition)))
-    lines.insert(insert_at + 10, encode_condition(build_mushroom_island(first_condition)))
+    root_insert_at = second_index
+    lines.insert(root_insert_at, encode_condition(build_hot_wet_diversity_climate(first_condition)))
+    lines.insert(root_insert_at + 1, encode_condition(build_hot_dry_diversity_climate(first_condition)))
+    lines.insert(root_insert_at + 2, encode_condition(build_taiga_climate(first_condition)))
+    lines.insert(root_insert_at + 3, encode_condition(build_cherry_grove_climate(first_condition)))
+    lines.insert(root_insert_at + 4, encode_condition(build_pale_garden_climate(first_condition)))
+    lines.insert(root_insert_at + 5, encode_condition(build_dappled_forest_climate(first_condition)))
+
+    spawn_insert_at = second_index + 7
+    lines.insert(spawn_insert_at, encode_condition(build_coastalness_climate(first_condition)))
+    lines.insert(spawn_insert_at + 1, encode_condition(build_warm_sea_climate(first_condition)))
+    lines.insert(spawn_insert_at + 2, encode_condition(build_open_terrain_climate(first_condition)))
+    lines.insert(spawn_insert_at + 3, encode_condition(build_central_sea_coverage(first_condition)))
+    lines.insert(spawn_insert_at + 4, encode_condition(build_mushroom_island(first_condition)))
 
     SESSION_PATH.write_text("\n".join(lines) + "\n")
 
