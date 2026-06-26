@@ -61,22 +61,22 @@ DAPPLED_LABEL = "Dappled Forest climate"
 #   humidity        ..-3500  : "very little humidity" (driest level 0). Tighter
 #                              than the starter's level 0-1 (..-1000).
 #   continentalness -1899..  : unchanged from the starter estimate (inland).
-#   erosion           500..  : NEW. A community theory holds that Dappled Forest
-#                              replaces plains bordering cold/snowy biomes. Plains
-#                              are flat, and flat terrain is high erosion (low
-#                              erosion = jagged/shattered). 500 is the erosion
-#                              level 3/4 band edge: it drops the jagged levels 0-3
-#                              and keeps the flatter levels 4-6. Orthogonal to
-#                              weirdness. Unverified hypothesis: if the biome
-#                              generates on varied terrain this hurts recall, so
-#                              A/B it. (Was briefly 1500, a mid-level-4 value with
-#                              no band significance.)
+#   erosion          1000..  : flat/plains bias (plains-replacement theory: plains
+#                              are flat, flat terrain is high erosion / low erosion
+#                              is jagged). Started at the band edge 500 (level 3/4,
+#                              which drops the jagged levels 0-3), then nudged a bit
+#                              into level 4 for a stronger flat bias. Mid-band has
+#                              no biome-assignment meaning, but terrain flatness
+#                              responds to raw erosion continuously, so a higher
+#                              floor still selects flatter ground. The next actual
+#                              band edge up is 4500 (level 5+), a large jump.
+#                              Orthogonal to weirdness; unverified hypothesis, A/B it.
 #   weirdness        3333..  : the variant lever, eased back from 3667 now that
 #                              erosion carries some of the discrimination.
 TEMP_MIN, TEMP_MAX = -4500, -1500
 HUMID_MIN, HUMID_MAX = INT_MIN, -3500
 CONT_MIN, CONT_MAX = -1899, INT_MAX
-EROS_MIN, EROS_MAX = 500, INT_MAX
+EROS_MIN, EROS_MAX = 1000, INT_MAX
 WEIRD_MIN, WEIRD_MAX = 3333, INT_MAX
 
 

@@ -31,7 +31,7 @@ the two traits the biome is actually described by:
 | temperature     | `-4500 .. -1500` | "cold" → level 1; floor excludes frozen/snowy      |
 | humidity        | `.. -3500`       | "very little humidity" → driest level 0            |
 | continentalness | `-1899 ..`       | unchanged from starter (inland); not described     |
-| erosion         | `500 ..`         | flat/plains terrain (level 3/4 band edge; see theory below); orthogonal to weirdness |
+| erosion         | `1000 ..`        | flat/plains terrain (mid level 4; see theory below); orthogonal to weirdness |
 | weirdness       | `3333 ..`        | variant lever; eased back from 3667 now erosion shares the load |
 
 ## Working theory: plains replacement
@@ -39,13 +39,17 @@ the two traits the biome is actually described by:
 A community theory holds that Dappled Forest replaces **plains that border
 cold/snowy biomes**. That corner of climate space — cold, dry, inland — already
 matches the box. Its new contribution is **erosion**: plains are flat, and flat
-terrain is high erosion (low erosion = jagged/shattered). So an `erosion >= 1500`
-floor biases toward flat, plains-like ground, and it is *orthogonal* to
-weirdness — a second independent lever once cranking weirdness alone hit
-diminishing returns. Unlike weirdness, erosion has 7 defined bands (like
-temperature/humidity), so the floor is set to a real band edge: `500` is the
-level 3/4 boundary, dropping the jagged levels 0-3 and keeping the flatter levels
-4-6. The next stricter edge up is `4500` (level 5+), if 500 proves too noisy.
+terrain is high erosion (low erosion = jagged/shattered). So an erosion floor
+biases toward flat, plains-like ground, and it is *orthogonal* to weirdness — a
+second independent lever once cranking weirdness alone hit diminishing returns.
+
+Erosion has 7 defined bands (like temperature/humidity, unlike weirdness). The
+floor started at the principled band edge `500` (level 3/4, which drops the
+jagged levels 0-3), then was nudged up to `1000` for a stronger flat bias.
+`1000` is mid-level-4, so it carries no biome-assignment significance — but
+terrain ruggedness responds to raw erosion continuously, so a higher floor still
+selects flatter ground. The next actual band edge up is `4500` (level 5+), a
+large jump that drops all of level 4.
 
 This is a hypothesis layered on a proxy for an undocumented biome. If Dappled
 Forest turns out to generate on varied terrain, the erosion floor costs recall.
@@ -57,7 +61,7 @@ A/B it: same seeds with and without the floor, compare precision.
   `2000`), or relax humidity (`-3500` → `-1000`). Temperature is the most
   aggressive cut here.
 - **Too noisy:** push weirdness higher (currently `3333`) or raise the erosion
-  floor (currently `500`) to the next band edge `4500` (level 5+, flatter).
+  floor (currently `1000`; next actual band edge is `4500`, level 5+, flatter).
   Weirdness has no fixed level
   bands to snap to above 0 (unlike temperature and humidity): 0 is the only hard
   line (base biome vs. "weirder" variant), and the per-biome sub-ranges aren't
