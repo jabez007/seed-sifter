@@ -94,6 +94,59 @@ The continentalness floor is the **first dial to relax** if hits are too sparse
 (`-1100` → `INT_MIN` lets frozen ocean satisfy it). It is *orthogonal* to all the
 Dappled Forest dials — this variant inherits whatever the base box currently is.
 
+## Variant: archipelago base (`dappled-forest-archipelago.session`)
+
+Third link in the chain — the snowy variant plus a **spawn-relative archipelago
+shape** for the "home base among islands" half of the goal. Four conditions:
+
+| Gate | Type | Window (from spawn) | Knob | Meaning |
+| :-- | :-- | :-- | :-- | :-- |
+| Coast: water | climate (cheap) | ±512 | continentalness `..-1900` | open ocean at the base |
+| Coast: land | climate (cheap) | ±512 | continentalness `300..` | solid land at the base |
+| Spawn moat E/W/N/S | climate (cheap) | arms 256–640 out, ±384 wide | continentalness reaches `..-1100` | water in every cardinal direction → spawn on an island |
+| Archipelago: sea | biome sample (full pass) | ±768 | ocean ≥ 0.47 | not a continent |
+| Archipelago: land | biome sample (full pass) | ±768 | curated land ≥ 0.31 | not drowned |
+
+The two `Coast:` gates exploit how `F_CLIMATE_NOISE` checks each parameter's
+range over the window independently: requiring continentalness to reach below
+`-1900` *and* above `300` in the same tight box forces a shore through the base.
+They are cheap and run in the fast pass as a prefilter. The two `Archipelago:`
+gates are the workhorse — `F_BIOME_SAMPLE` measures a *minimum* coverage of a
+biome set, so a sea floor and a land floor together bound the sea share from both
+sides, rejecting both the continent and the drowned-world cases.
+
+The four `Spawn moat` gates check **spawn is on an island**: each is a
+rectangular arm in one cardinal direction (256–640 blocks out, ±384 wide) that
+requires ocean continentalness (`..-1100`, the waterline) to *occur* in the
+strip. Water in all four directions means the spawn landmass is bounded all
+around — an island within the field, not a continent running off one way. They
+use `limok` (water *exists* in the arm), not `limex` (the arm is *entirely*
+water), so neighbouring islets in the moat are fine: this is "spawn on its own
+island in the archipelago," not "lone island in empty sea" (the strict `limex`
+form would fight the island field). Two limits to keep in mind: four cardinal
+rectangles leave the **diagonals uncovered**, so a landmass joined to a continent
+by a diagonal isthmus can slip through; and there is **no connected-component
+test** (`F_BIOME_CENTER` clusters a single biome at a minimum size only), so this
+bounds the spawn land geometrically rather than proving it is one piece. Lower
+`MOAT_OCEAN` toward `-1900` to demand genuine open ocean (not just shore) in each
+direction.
+
+**What this cannot do** (verified against cubiomes-viewer `search.cpp`, pinned
+commit `e61f905`): count islands. `F_BIOME_CENTER` only clusters a *single* biome
+id with a *minimum* size, so there is no "≥ N separate landmasses" filter and no
+way to cap a continent. Balanced coverage at a small window is a *proxy* for
+fragmentation — reliable at rejecting the two degenerate extremes, but it cannot
+prove a specific island count.
+
+The land set is curated, not all-land: plains, sunflower plains, savanna, both
+old-growth taigas, bamboo jungle, forest, taiga, sparse jungle, both birch
+forests, flower forest, grove. Because it is a subset, the land floor is stricter
+than the same fraction of land in general. At `sea ≥ 0.47` + `land ≥ 0.31` the
+two floors claim 78% of the window, leaving ~22% for shore, the snowy region
+(deliberately *outside* this set except grove — snowy is the expedition target,
+the curated islands are the base), and everything else. That is a tight filter;
+`sea`/`land` coverage are the first dials to relax if hits are sparse.
+
 ## Regenerate
 
 Base Dappled Forest proxy:
@@ -112,6 +165,22 @@ starter and adds the snowy gate, so it never rewrites `dappled-forest.session`
 ```
 python3 searches/dappled-forest/scripts/narrow_dappled_forest_snowy.py
 ```
+
+Archipelago variant — derives the snowy lines in memory and appends the four
+archipelago gates, writing only its own session:
+
+```
+python3 searches/dappled-forest/scripts/narrow_dappled_forest_archipelago.py
+```
+
+Note: each script rewrites **its own** session and discards any run results in
+that file — regenerating a clean session is the point. A script never touches the
+sessions *upstream* of it (the snowy and archipelago scripts build their base in
+memory), so generating a downstream variant is safe. But re-running
+`narrow_dappled_forest.py` resets `dappled-forest.session`, re-running
+`narrow_dappled_forest_snowy.py` resets `dappled-forest-snowy.session`, and so on.
+Run a script only when you intend to reset that session — commit run results
+first if you want to keep them.
 
 Revisit the parameters once cubiomes adds a real `dappled_forest` row — at that
 point a biome-presence check should replace this proxy.

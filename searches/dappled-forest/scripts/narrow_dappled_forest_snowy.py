@@ -100,9 +100,14 @@ def build_snowy_climate(base):
     return condition
 
 
-def main() -> None:
-    # Derive the base Dappled Forest narrowing in memory from the current
-    # starter. This never touches dappled-forest.session, which holds run results.
+def build_snowy_lines() -> list[str]:
+    """Return the base Dappled Forest lines with the snowy gate inserted.
+
+    Built entirely in memory (from build_dappled_lines, which reads the current
+    starter) and returns the lines, so callers layering further conditions on top
+    -- e.g. the archipelago variant -- can derive from this without writing, and
+    without clobbering dappled-forest.session, which accumulates run results.
+    """
     lines = build_dappled_lines()
 
     first_cond_index = None
@@ -131,9 +136,12 @@ def main() -> None:
     # climate noise check, so it sits among the other climate gates and ahead of
     # the expensive biome-presence scans.
     lines.insert(dappled_index + 1, encode_condition(snowy))
+    return lines
 
+
+def main() -> None:
     DAPPLED_SNOWY_SESSION.parent.mkdir(parents=True, exist_ok=True)
-    DAPPLED_SNOWY_SESSION.write_text("\n".join(lines) + "\n")
+    DAPPLED_SNOWY_SESSION.write_text("\n".join(build_snowy_lines()) + "\n")
 
 
 if __name__ == "__main__":
