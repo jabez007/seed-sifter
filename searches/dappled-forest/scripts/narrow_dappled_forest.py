@@ -93,7 +93,15 @@ def narrow_dappled_forest(condition: Condition) -> None:
     condition.limok[NP_WEIRDNESS][1] = WEIRD_MAX
 
 
-def main() -> None:
+def build_dappled_lines() -> list[str]:
+    """Read the current starter session and return its lines with only the
+    Dappled Forest climate condition narrowed.
+
+    Returns the lines in memory and writes nothing, so callers that layer
+    further changes on top (e.g. the snowy variant) can derive a fresh session
+    from the canonical starter without clobbering the base session file -- which
+    accumulates search results from actual runs.
+    """
     lines = STARTER_SESSION.read_text().splitlines()
     found = False
     for idx, line in enumerate(lines):
@@ -110,8 +118,12 @@ def main() -> None:
     if not found:
         raise ValueError(f"{DAPPLED_LABEL!r} condition not found in starter session")
 
+    return lines
+
+
+def main() -> None:
     DAPPLED_SESSION.parent.mkdir(parents=True, exist_ok=True)
-    DAPPLED_SESSION.write_text("\n".join(lines) + "\n")
+    DAPPLED_SESSION.write_text("\n".join(build_dappled_lines()) + "\n")
 
 
 if __name__ == "__main__":

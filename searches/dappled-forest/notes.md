@@ -70,13 +70,48 @@ A/B it: same seeds with and without the floor, compare precision.
 - All values are named constants at the top of
   `scripts/narrow_dappled_forest.py`.
 
+## Variant: snowy-adjacent coastal survival (`dappled-forest-snowy.session`)
+
+A second version aimed at a **varied coastal-survival seed** — archipelago
+geography, strong biome transitions, "home base plus expeditions." It is the base
+Dappled Forest proxy **plus one extra root climate gate** requiring a genuinely
+snowy region in the central map.
+
+| Parameter       | Range       | Source                                                |
+| :-------------- | :---------- | :---------------------------------------------------- |
+| temperature     | `.. -4500`  | snowy = temperature level 0; the band directly *below* the Dappled Forest floor |
+| continentalness | `-1100 ..`  | coast-or-inland, so it wants snowy *land* not frozen open ocean |
+
+Why snowy: the Dappled Forest box floors temperature at `-4500` to *exclude*
+frozen/snowy land (it is a grassy level-1 forest). Snowy biomes sit just below
+that edge. Requiring both in the same `-1792..1792` area forces the two adjacent
+bands to coexist — cold grassy forest abutting frozen terrain — which is the
+strong-transition adjacency the survival goal is built around. The Central-sea
+coverage gate (already in the base) supplies the warm-leaning seas around it, so
+the combination reads as snowy islands in a navigable archipelago.
+
+The continentalness floor is the **first dial to relax** if hits are too sparse
+(`-1100` → `INT_MIN` lets frozen ocean satisfy it). It is *orthogonal* to all the
+Dappled Forest dials — this variant inherits whatever the base box currently is.
+
 ## Regenerate
+
+Base Dappled Forest proxy:
 
 ```
 python3 searches/dappled-forest/scripts/narrow_dappled_forest.py
 ```
 
 Re-reads the current starter session and re-applies the narrowing, so starter
-changes (new conditions, area tweaks) carry through automatically. Revisit the
-parameters once cubiomes adds a real `dappled_forest` row — at that point a
-biome-presence check should replace this proxy.
+changes (new conditions, area tweaks) carry through automatically.
+
+Snowy coastal variant — derives the base narrowing in memory from the same
+starter and adds the snowy gate, so it never rewrites `dappled-forest.session`
+(that file accumulates run results):
+
+```
+python3 searches/dappled-forest/scripts/narrow_dappled_forest_snowy.py
+```
+
+Revisit the parameters once cubiomes adds a real `dappled_forest` row — at that
+point a biome-presence check should replace this proxy.
