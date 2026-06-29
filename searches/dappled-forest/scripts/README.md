@@ -35,7 +35,8 @@ The scanner:
 2. keeps seeds with at least one Woodland Mansion and one Stronghold in the
    anchor ring,
 3. enriches those candidates with villages, skeleton/spider spawners, Pillager
-   Outposts, witch huts, desert temples, jungle temples, and ocean monuments,
+   Outposts, witch huts, desert temples, trail ruins, jungle temples, and ocean
+   monuments,
 4. scores and ranks the enriched records.
 
 ## 3. Rerank existing enriched output
@@ -76,6 +77,7 @@ nearby useful villages.
 | Witch huts | `220 × rank-decayed value` |
 | Pillager Outposts | `180 × rank-decayed value`, first 3 |
 | Desert temples | `140 × min(rank-decayed value, 1.75)` |
+| Trail ruins | `120 × rank-decayed value` |
 | Jungle temples | `100 × min(rank-decayed value, 1.75)` |
 | Ocean monuments | `35 × min(count, 8)` |
 | Strongholds | `240 × rank-decayed value` |
@@ -95,8 +97,9 @@ max(0, 1 - taxi_distance / cap)
 |---|---:|
 | Missing witch hut | `-180` |
 | Missing Pillager Outpost | `-160` |
-| Missing desert temple | `-100` |
-| Missing jungle temple | `-100` |
+| Missing desert temple | `-120` |
+| Missing trail ruins | `-100` |
+| Missing jungle temple | `-80` |
 | Pillager Outpost closer than 512 taxi | up to `-250` |
 | Witch hut closer than 384 taxi | up to `-120` |
 

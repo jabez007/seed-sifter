@@ -30,6 +30,7 @@ const DEFAULT_WEIGHTS = {
   witchHut: 220,
   pillagerOutpost: 180,
   desertTemple: 140,
+  trailRuin: 120,
   jungleTemple: 100,
   oceanMonument: 35,
   stronghold: 240,
@@ -41,8 +42,9 @@ const DEFAULT_WEIGHTS = {
 const DEFAULT_PENALTIES = {
   missingWitchHut: 180,
   missingPillagerOutpost: 160,
-  missingDesertTemple: 100,
-  missingJungleTemple: 100,
+  missingDesertTemple: 120,
+  missingTrailRuin: 100,
+  missingJungleTemple: 80,
   outpostTooCloseThreshold: 512,
   outpostTooCloseMax: 250,
   witchHutTooCloseThreshold: 384,
@@ -154,6 +156,7 @@ const CONVERT = {
   witchHut: (p) => ({ x: p[0] * 16 + 8, z: p[1] * 16 + 8 }),
   desertTemple: (p) => ({ x: p[0] * 16 + 8, z: p[1] * 16 + 8 }),
   jungleTemple: (p) => ({ x: p[0] * 16 + 8, z: p[1] * 16 + 8 }),
+  trailRuin: (p) => ({ x: p[2][0], y: p[2][1], z: p[2][2] }),
   village: (p) => ({ x: p[0] * 16 + 8, z: p[1] * 16 + 8 }),
 };
 
@@ -203,6 +206,7 @@ function computeUtility(record, config) {
     pillagerOutpost: weights.pillagerOutpost * decayed(record.pillagerOutposts, caps.midgameTaxi, 3),
     desertTemple: weights.desertTemple * desertValue,
     jungleTemple: weights.jungleTemple * jungleValue,
+    trailRuin: weights.trailRuin * decayed(record.trailRuins, caps.midgameTaxi),
     oceanMonument: weights.oceanMonument * Math.min(record.oceanMonuments || 0, caps.oceanMonuments),
     stronghold: weights.stronghold * decayed(record.strongholds, caps.anchorTaxi),
     mansion: weights.mansion * decayed(record.mansions, caps.anchorTaxi),
@@ -213,6 +217,7 @@ function computeUtility(record, config) {
     missingWitchHut: (record.witchHuts || []).length === 0 ? penalties.missingWitchHut : 0,
     missingPillagerOutpost: (record.pillagerOutposts || []).length === 0 ? penalties.missingPillagerOutpost : 0,
     missingDesertTemple: (record.desertTemples || []).length === 0 ? penalties.missingDesertTemple : 0,
+    missingTrailRuin: (record.trailRuins || []).length === 0 ? penalties.missingTrailRuin : 0,
     missingJungleTemple: (record.jungleTemples || []).length === 0 ? penalties.missingJungleTemple : 0,
     outpostTooClose: tooClosePenalty(record.pillagerOutposts, penalties.outpostTooCloseThreshold, penalties.outpostTooCloseMax),
     witchHutTooClose: tooClosePenalty(record.witchHuts, penalties.witchHutTooCloseThreshold, penalties.witchHutTooCloseMax),
@@ -343,7 +348,7 @@ async function runScan(args) {
   const enriched = await pool(anchor.results, workers, async (record, w) => {
     const [dungeonOut, midOut, villageOut] = await Promise.all([
       w.call(['getPois'], [world(record.seed), ['dungeon'], ...box(record.spawn, config.radii.dungeon)]),
-      w.call(['getPois'], [world(record.seed), ['pillagerOutpost', 'witchHut', 'desertTemple', 'jungleTemple'], ...box(record.spawn, config.radii.midgame)]),
+      w.call(['getPois'], [world(record.seed), ['pillagerOutpost', 'witchHut', 'desertTemple', 'jungleTemple', 'trailRuin'], ...box(record.spawn, config.radii.midgame)]),
       w.call(['getPois'], [world(record.seed), ['village'], ...box(record.spawn, config.radii.village)]),
     ]);
     const dungeons = dungeonList(dungeonOut.dungeon, record.spawn, config.radii.dungeon);
@@ -356,6 +361,7 @@ async function runScan(args) {
       witchHuts: poiList(midOut, 'witchHut', record.spawn, config.radii.midgame),
       desertTemples: poiList(midOut, 'desertTemple', record.spawn, config.radii.midgame),
       jungleTemples: poiList(midOut, 'jungleTemple', record.spawn, config.radii.midgame),
+      trailRuins: poiList(midOut, 'trailRuin', record.spawn, config.radii.midgame),
     };
     return { ...r, ...computeUtility(r, config) };
   }, 'enrich');
@@ -363,7 +369,7 @@ async function runScan(args) {
   workers.forEach((w) => w.worker.terminate());
   const results = normalize(enriched.results);
   writeJson(out, {
-    model: 'dappled forest ChunkBase Bedrock scan; phase radii; revised utility; desert edge; temple cap 1.75',
+    model: 'dappled forest ChunkBase Bedrock scan; phase radii; revised utility; desert edge; trail ruins; temple cap 1.75',
     generatedAt: new Date().toISOString(),
     tested: seeds.length,
     matched: results.length,
@@ -390,7 +396,7 @@ function runRerank(args) {
   normalize(results);
   writeJson(out, {
     ...data,
-    model: 'dappled forest rerank; phase radii; revised utility; desert edge; temple cap 1.75',
+    model: 'dappled forest rerank; phase radii; revised utility; desert edge; trail ruins; temple cap 1.75',
     rerankedAt: new Date().toISOString(),
     config,
     matched: results.length,
