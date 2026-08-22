@@ -9,10 +9,15 @@ from pathlib import Path
 
 SESSION_PATH = Path(__file__).resolve().parents[1] / "viewer-search.session"
 
-F_CLIMATE_NOISE = 56
-F_BIOME_SAMPLE = 66
-F_BIOME_CENTER = 19
+# Filter type ids, indices into the filter enum in cubiomes-viewer src/search.h
+# (verified against tag 4.1.2). The enum only ever grows at the end, so these are
+# stable across viewer versions.
 F_SPAWN = 15
+F_STRONGHOLD = 16
+F_VILLAGE = 22
+F_CLIMATE_NOISE = 56
+F_BIOME_CENTER = 59
+F_BIOME_SAMPLE = 66
 
 FLG_IN_RANGE = 0x20
 
