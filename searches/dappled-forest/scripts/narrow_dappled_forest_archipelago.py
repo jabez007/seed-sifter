@@ -235,7 +235,14 @@ def build_archipelago_conditions(base):
     ]
 
 
-def main() -> None:
+def build_archipelago_lines() -> list[str]:
+    """Return the snowy session lines with the archipelago gates appended.
+
+    Built in memory (from build_snowy_lines, which reads the current starter) and
+    returned rather than written, so callers layering further conditions on top --
+    e.g. the structures variant -- can derive from this without clobbering
+    dappled-forest-archipelago.session, which accumulates run results.
+    """
     lines = build_snowy_lines()
 
     cond_indexes = [idx for idx, line in enumerate(lines) if line.startswith("#Cond:")]
@@ -254,8 +261,12 @@ def main() -> None:
     for offset, condition in enumerate(conditions):
         lines.insert(insert_at + offset, encode_condition(condition))
 
+    return lines
+
+
+def main() -> None:
     ARCHIPELAGO_SESSION.parent.mkdir(parents=True, exist_ok=True)
-    ARCHIPELAGO_SESSION.write_text("\n".join(lines) + "\n")
+    ARCHIPELAGO_SESSION.write_text("\n".join(build_archipelago_lines()) + "\n")
 
 
 if __name__ == "__main__":

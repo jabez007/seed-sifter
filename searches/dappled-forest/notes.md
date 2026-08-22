@@ -147,6 +147,131 @@ two floors claim 78% of the window, leaving ~22% for shore, the snowy region
 the curated islands are the base), and everything else. That is a tight filter;
 `sea`/`land` coverage are the first dials to relax if hits are sparse.
 
+## Variant: village + stronghold (`dappled-forest-structures.session`)
+
+Fourth link — the archipelago variant plus the settlement half of the goal: a
+**village with Dappled-Forest-like climate next to it**, and a **stronghold
+within reach of that village**.
+
+| Gate | Type | Window | Knob | Meaning |
+| :-- | :-- | :-- | :-- | :-- |
+| Village | structure (full pass) | ±1792 from origin | `count = 1` | at least one village in the central area; branches per village |
+| Dappled near village | climate (cheap) | ±384 from *the village* | the base Dappled Forest box | that village has the climate signature next door |
+| Stronghold near village | structure (full pass) | radius 1280 from *the village* | `count = 1` | a stronghold within reach of that same village |
+
+### Why the village is the anchor
+
+The obvious shape — "find the Dappled Forest, then look for structures near it" —
+is not expressible. Verified against cubiomes-viewer `search.cpp` (4.1.2):
+`F_CLIMATE_NOISE` reports **the center of its own search box** as its position,
+not the place where the climate matched. Anything hung off a climate gate is
+therefore just "near the middle of the box", which for the root gates is the
+world origin.
+
+Structure filters do report real positions, and `_testTreeAt` splits a
+`BR_CLUST` filter with `count == 1` into **one subbranch per instance**: each
+village is tried in turn, its dependent conditions are evaluated relative to
+that village, and the instances are combined with OR. So the anchor is inverted
+— the village is the parent, and both the climate window and the stronghold hang
+off it. The group as a whole reads: *there exists a village that has
+Dappled-Forest-like climate within 384 blocks and a stronghold within 1280.*
+
+The `count == 1` on the village gate is load-bearing. With any other count the
+filter stops branching and hands its children the **centroid** of several
+villages — a point that need not be near any of them.
+
+### Stronghold geometry (read before tuning the radius)
+
+For MC 1.9+ strongholds generate at `r = 1408 + 3072*n + 1280*[0,1]` (±112) from
+the world origin. The whole first ring — three strongholds — sits between ~1300
+and ~2800 blocks out, and the second ring does not begin until ~4480. **Nothing
+generates within ~1300 blocks of (0,0).** A village near spawn therefore cannot
+have a stronghold a few hundred blocks away in any seed, so this gate implicitly
+pushes the qualifying village outward toward the first ring. `1280` is roughly
+the smallest radius that still leaves a workable hit rate; toward `2048` it
+loosens a lot, below ~`768` the combination becomes very rare.
+
+### Precision caveat on the near-village window
+
+`F_CLIMATE_NOISE` checks each parameter's range over the window
+**independently**, so in principle temperature could hit its band in one corner
+of the ±384 window and weirdness in another. That is the same behaviour the
+`Coast:` gates exploit on purpose; here it is a precision cost. It shrinks as the
+window shrinks, because nearby columns have correlated noise — tighten
+`DAPPLED_NEAR_HALF` toward `192` for a stronger guarantee that the whole
+signature lands in one place, widen it for more hits and a looser "near".
+
+Everything else the base proxy warns about still applies: there is no
+`dappled_forest` biome id, so this is still climate-box proxy stacked on a
+1.21 world.
+
+### Dials
+
+- **Too few hits:** the archipelago coverage floors (`SEA_COVERAGE` /
+  `LAND_COVERAGE`) are still the tightest gates in the stack — relax those before
+  touching the structure gates. After that, widen `STRONGHOLD_RADIUS`, then
+  `DAPPLED_NEAR_HALF`. To drop the archipelago geography entirely, import
+  `build_snowy_lines` instead of `build_archipelago_lines` in
+  `narrow_dappled_forest_structures.py`.
+- **Too noisy:** tighten `DAPPLED_NEAR_HALF` toward `192`.
+- **Not expressible without more work:** a specifically snowy or taiga village.
+  `varflags = VAR_WITH_START` pins a *single* village biome per condition, so a
+  set of acceptable biomes needs an `F_LOGIC_OR` node above several village
+  conditions.
+- **Optional speed-up, at a real cost in recall:** `F_FIRST_STRONGHOLD` depends
+  only on the 48-bit seed, so "first stronghold inside the central area" is a
+  cheap prefilter that runs before the expensive gates. It is *not* implied by
+  this search, though — it demands that the *first* of the three ring-0
+  strongholds be the one in range, and rejects seeds where a different one is.
+
+### Two-phase workflow
+
+Two sessions are generated from the same condition list:
+
+1. `dappled-forest-structures.session` — `#Search: 2` (seed list), with
+   `#List64` pointing at `data/analysis-inputs/known-seeds.txt`. Running this
+   re-tests every seed already collected (favourites first) against the new
+   criteria.
+2. `dappled-forest-structures-hunt.session` — `#Search: 1` (full seed space), no
+   seed list. Run this after the review to keep finding new candidates.
+
+They are separate files rather than one file with a dropdown switch because the
+two search types need different headers, and getting it wrong fails silently: in
+`SEARCH_INC` / `SEARCH_BLOCKS` a non-empty seed list is reinterpreted as a
+**48-bit candidate list** (see `preSearch()` in `searchthread.cpp`), which would
+quietly confine the hunt to the low 48 bits of the seeds already found.
+
+`known-seeds.txt` is regenerated from the run results committed in the three
+upstream session files, plus the favourites listed in `FAVOURITE_SEEDS` at the
+top of the script — add to that list to make a seed jump the queue.
+
+`#List64` records an absolute path, because the viewer resolves it against its
+own working directory. **Under a Flatpak viewer that path is not usable**: the
+sandbox cannot see `~/source`, so the file has to be picked through the file
+dialog, and the portal rewrites the saved path to an ephemeral
+`/run/user/1000/doc/<id>/known-seeds.txt` proxy that will not resolve on a later
+run. Expect to re-pick the list each session, and treat the `#List64` line in a
+committed session as a record of which list was used, not a working path.
+
+### Caveat on the collected seeds
+
+The seeds in `known-seeds.txt` were found before the filter-id fix in
+`update_starter_session.py`: `F_BIOME_CENTER` was set to `19`, which is `F_HUT`.
+The three biome-presence gates (`Mushroom island`, `Cherry Grove present`,
+`Pale Garden present`) were therefore all running as **swamp-hut** checks, so
+those runs never confirmed the biomes actually generate — they confirmed a swamp
+hut existed. The climate gates were unaffected. The review pass re-tests every
+one of those seeds with the corrected gates, which is a second reason to run it
+before trusting the collection.
+
+The three upstream session files still contain the `F_HUT` conditions, and are
+deliberately left that way: they are the record of how those runs were actually
+performed, and patching their conditions would make each file claim a search
+configuration that did not produce the seeds stored underneath it. Only the
+starter and anything regenerated from it are fixed. To re-run one of those
+searches under the corrected gates, regenerate a fresh session from its script
+rather than editing the archive.
+
 ## Regenerate
 
 Base Dappled Forest proxy:
@@ -173,12 +298,21 @@ archipelago gates, writing only its own session:
 python3 searches/dappled-forest/scripts/narrow_dappled_forest_archipelago.py
 ```
 
-Note: each script rewrites **its own** session and discards any run results in
-that file — regenerating a clean session is the point. A script never touches the
+Structures variant — derives the archipelago lines in memory, appends the
+village / stronghold group, and writes both sessions plus the seed list:
+
+```
+python3 searches/dappled-forest/scripts/narrow_dappled_forest_structures.py
+```
+
+Note: each script rewrites **its own** session(s) and discards any run results in
+those files — regenerating a clean session is the point. A script never touches the
 sessions *upstream* of it (the snowy and archipelago scripts build their base in
 memory), so generating a downstream variant is safe. But re-running
 `narrow_dappled_forest.py` resets `dappled-forest.session`, re-running
-`narrow_dappled_forest_snowy.py` resets `dappled-forest-snowy.session`, and so on.
+`narrow_dappled_forest_snowy.py` resets `dappled-forest-snowy.session`, and
+`narrow_dappled_forest_structures.py` resets both structures sessions and
+rewrites `known-seeds.txt`.
 Run a script only when you intend to reset that session — commit run results
 first if you want to keep them.
 
