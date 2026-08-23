@@ -20,7 +20,7 @@ worldgen and Cubiomes search strategy.
 - [`docs/Cubiomes Multi-Noise System Analysis.md`](./docs/Cubiomes%20Multi-Noise%20System%20Analysis.md) - reference notes on Cubiomes and Minecraft's multi-noise biome system
 - [`searches/viewer-search.session`](./searches/viewer-search.session) - starter `cubiomes-viewer` session with reusable default filters
 - [`searches/scripts/update_starter_session.py`](./searches/scripts/update_starter_session.py) - regenerates the starter session from a hard-coded condition set
-- [`searches/dappled-forest/`](./searches/dappled-forest/) - the Dappled Forest search: a chain of four sessions (base proxy, snowy, archipelago, village + stronghold) derived from the starter, with [`notes.md`](./searches/dappled-forest/notes.md) covering the reasoning and dials for each link
+- [`searches/dappled-forest/`](./searches/dappled-forest/) - the Dappled Forest search: a chain of four sessions (base proxy, snowy, archipelago, village + stronghold, retuned + cost-ordered) derived from the starter, with [`notes.md`](./searches/dappled-forest/notes.md) covering the reasoning and dials for each link
 
 ## Intended Search Layout
 
