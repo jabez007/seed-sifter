@@ -14,7 +14,9 @@ SESSION_PATH = Path(__file__).resolve().parents[1] / "viewer-search.session"
 # stable across viewer versions.
 F_SPAWN = 15
 F_STRONGHOLD = 16
+F_HUT = 19
 F_VILLAGE = 22
+F_MANSION = 24
 F_CLIMATE_NOISE = 56
 F_BIOME_CENTER = 59
 F_BIOME_SAMPLE = 66

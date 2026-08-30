@@ -224,67 +224,6 @@ Everything else the base proxy warns about still applies: there is no
   this search, though — it demands that the *first* of the three ring-0
   strongholds be the one in range, and rejects seeds where a different one is.
 
-### 5. Swamps — an actual check instead of a marginal one
-
-`Hot/wet climate` is a *diversity* gate — it asks for the warm/humid family as a
-whole, jungles included, not for swamps specifically. It is handled in section 6
-along with the other two. What it does not do is guarantee a swamp: the family is
-satisfied by jungle alone, and 66.5% of *all* seeds have a swamp or mangrove
-cluster anyway, so nothing in the stack was actually asking for one.
-
-Note this is unrelated to the Dappled erosion cap. That cap only stops the
-*Dappled Forest* proxy from counting a swamp column as evidence of dappled
-forest — swamp is not in its neighbour list. It never removed swamps from the
-search.
-
-`F_BIOME_SAMPLE` is the right tool: it takes a biome *set*, so one condition
-covers swamp and mangrove together (`F_BIOME_CENTER` matches a single id and
-would need an `F_LOGIC_OR` node for the pair), and its Monte-Carlo estimate
-aborts early, so it costs 2.8 ms against 48.4 ms for the equivalent centre scan.
-
-Measured against ground truth — a swamp or mangrove cluster of ≥128 cells
-somewhere in the ±1792 box, true for 66.5% of seeds:
-
-| coverage | passes | cost | agrees with ground truth |
-| --: | --: | --: | --: |
-| **≥ 0.2%** (shipped) | 54.0% | 2.80 ms | **87.5%** |
-| ≥ 0.3% | 49.5% | 2.62 ms | 83.0% |
-| ≥ 0.5% | 43.5% | 2.50 ms | 77.0% |
-| ≥ 1.0% | 30.5% | 2.12 ms | 64.0% |
-
-Higher thresholds drift away from "a swamp exists" and toward "swamp is a large
-share of the map", rejecting worlds with a perfectly good swamp. This gate is specifically about swamps; the warm/humid family as a whole is
-section 6's job.
-
-### 6. The three regional-variety gates, as biome checks
-
-`Hot/wet`, `Hot/dry` and `Taiga` are diversity gates: each asks that the region
-contain a climate *family* — all the jungle varieties and other warm, humid
-biomes; savanna and badlands; the taigas — not one specific biome. Written as
-climate boxes they hit the same marginal-independence problem as everything else,
-and for a diversity requirement that failure mode is worse than weak: it is
-**lossy**. Measured over 200 seeds, where "gate rejects" counts seeds whose
-biomes are demonstrably present but whose climate gate says no:
-
-| gate | climate gate (limok) | biome sample (≥0.2%) | gate rejects seeds that have it |
-| :-- | --: | --: | --: |
-| Hot/wet | 76.0%, 12.41 ms | 89.5%, 1.09 ms | **20.5%** |
-| Hot/dry | 90.0%, 2.46 ms | 84.5%, 1.25 ms | 2.5% |
-| Taiga | 93.5%, 13.44 ms | 82.5%, 1.28 ms | 0.0% |
-
-`Hot/wet climate` was discarding one world in five that genuinely had the jungles
-and swamps. All three are replaced by `F_BIOME_SAMPLE` over the corresponding
-biome set, which makes each gate mean what its label says, ends the false
-rejections, and costs a tenth as much for Hot/wet and Taiga. The sets:
-
-- **Hot/wet biomes** — swamp, mangrove swamp, jungle, sparse jungle, bamboo jungle
-- **Hot/dry biomes** — savanna, savanna plateau, windswept savanna, badlands,
-  wooded badlands plateau, badlands plateau, eroded badlands, desert
-- **Taiga biomes** — taiga, old-growth pine taiga, old-growth spruce taiga
-
-`Swamp present` remains separate, since the Hot/wet family gate is satisfied by
-jungle alone. None of the eight hand-validated seeds is lost to this conversion.
-
 ### Two-phase workflow
 
 Two sessions are generated from the same condition list:
@@ -335,7 +274,8 @@ rather than editing the archive.
 
 ## Variant: retuned + cost-ordered (`dappled-forest-tuned.session`)
 
-Fifth link. Same goal as the structures variant, with four corrections. Each one
+Fifth link. Same goal as the structures variant, with five corrections and two
+structure checks it never had. Each one
 is backed by a measurement taken by compiling cubiomes at the pinned commit
 `e61f905` and replicating the viewer's own evaluation over 400 random seeds
 (MC 1.21 WD). It is a **separate link rather than an edit** to the structures
@@ -463,6 +403,103 @@ behaviour exactly.
 Erosion deliberately keeps `limok`, since "prefer moderate-to-high erosion" is an
 existence claim; moving it to `limex` too is a supported dial that takes the gate
 to 24.5% on its own.
+
+### 5. One presence check per biome family
+
+The regional-variety requirements began as three climate boxes — `Hot/wet`,
+`Hot/dry`, `Taiga` — each asking that a climate *family* exist somewhere in the
+region. Two problems, both measured:
+
+**They were lossy, not merely weak.** `F_CLIMATE_NOISE` checks each parameter's
+range over the box independently, so the constraints need not hold in the same
+place. `Hot/wet climate` passed 76.0% of seeds while **rejecting 20.5% of seeds
+that demonstrably had the jungles and swamps** — it was discarding one world in
+five that satisfied the very thing it existed to check. `Hot/dry` did the same at
+2.5%, `Taiga` at 0.0%.
+
+**A family gate is satisfied by any one member.** "Hot/dry" was true of a world
+with savanna and no badlands; "Hot/wet" was true of one with jungle and no swamp.
+Nothing in the stack was actually asking for a swamp.
+
+So each family is now its own `F_BIOME_SAMPLE` gate over the biome set it names:
+
+| gate | counts | passes | cost |
+| :-- | :-- | --: | --: |
+| `Badlands biomes` | badlands, wooded badlands, eroded badlands | 34.5% | 2.42 ms |
+| `Swamp present` | swamp, mangrove swamp | 54.0% | 2.69 ms |
+| `Bamboo jungle` | bamboo jungle | 55.0% | 3.04 ms |
+| `Taiga biomes` | taiga, old-growth pine taiga, old-growth spruce taiga | 82.5% | 1.28 ms |
+| `Savanna biomes` | savanna, savanna plateau, windswept savanna | 84.0% | 1.34 ms |
+
+`F_BIOME_SAMPLE` takes a *set*, so one condition covers a biome and its variants,
+and its Monte-Carlo estimate aborts early — which makes a *failing* seed, the
+common case, cheap. Each requires **≥ 0.2% coverage of the ±1792 box at 90%
+confidence**: roughly 25,700 blocks², a 160×160 square's worth, scattered
+anywhere in the region. Measured against ground truth (a cluster of ≥128 cells),
+0.2% tracks "this family really is here" most closely — 87.5% agreement, against
+77.0% at 0.5% and 64.0% at 1.0%. Higher thresholds drift toward "this family
+covers a large share of the map" and start rejecting worlds with a perfectly good
+swamp or savanna.
+
+They are ordered rarest-first so the cheap rejections happen early.
+
+#### What the split costs
+
+Speed: nothing. The block goes from 3.73 to **3.95 ms/seed** short-circuited, and
+it sits late enough in the ordering that most seeds never reach it.
+
+Throughput: real. Of the 63 seeds found under the earlier three-gate version, all
+63 have swamp and savanna, 58.7% have bamboo jungle, and only **20.6% have
+badlands** — 9.5% (6 of 63) have everything. Expect the hit rate to fall from
+about **1 in 624k seeds to about 1 in 6.5M**.
+
+Badlands is the binding constraint, and it is structural rather than a tuning
+mistake: badlands needs temperature ≥ 5500, the hottest band, while `Snowy
+biomes` needs ≤ -4500, the coldest — both inside the same 3,584-block box.
+
+| badlands present | rate |
+| :-- | --: |
+| in seeds **with** a snowy region | 19.8% |
+| in seeds **without** one | 59.5% |
+
+Lowering its coverage does not rescue it: at 0.1% it only reaches 22.2%, because
+in these worlds the badlands are absent, not small. Dropping the `Badlands
+biomes` gate restores roughly 0.59x of the original throughput; dropping
+`Bamboo jungle` as well restores essentially all of it.
+
+### 6. Swamp hut and woodland mansion
+
+Two plain structure presence checks, and among the best-value gates in the
+stack — 0.21 ms and 0.03 ms for pass rates in the 30–55% range. They run second
+and third, right behind `Central sea coverage`.
+
+The search radius is the whole decision. Measured conditional on gates the stack
+already enforces — swamp coverage for huts, since huts only generate in swamp;
+Pale Garden presence for mansions, since mansions only generate in dark forest
+and pale garden is carved out of it:
+
+| gate | ±1792 | ±2560 | ±4096 |
+| :-- | --: | --: | --: |
+| swamp hut, given swamp | 33.3% | 56.5% | — |
+| woodland mansion, given pale garden | 21.7% | 32.5% | 54.2% |
+
+Holding both to the ±1792 central box would cost roughly **14x** throughput
+(~1 hit in 90M seeds). At `HUT_HALF = 2560` and `MANSION_HALF = 4096` they cost
+**3.4x** instead — jointly 29.5%, so about **1 in 22M**.
+
+The wider radii are also the more honest framing. Every other condition here
+describes the central map, but a mansion is an expedition target by design: they
+generate rarely and far apart, so ±4096 — a ~4 km trek at the corner — matches
+how the structure actually works rather than forcing it next door. Huts get
+±2560 for the same reason; swamps outside the central box still have huts worth
+visiting.
+
+Worth stating plainly: **these two conditions look outside the region every other
+gate examines.** Narrow both to `VARIETY_HALF` if you want a search where
+everything lives in one map.
+
+Of the six seeds that survived the family split, two also have both structures:
+`8609475112648835277` and `4854598923328684322`.
 
 ### Two-phase workflow
 

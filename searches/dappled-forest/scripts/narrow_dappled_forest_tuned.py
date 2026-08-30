@@ -3,7 +3,8 @@
 
 Fifth link in the chain. Same goal as the structures variant -- an archipelago
 survival seed with a village and stronghold near likely Dappled Forest -- but
-with four corrections, each backed by a measurement recorded in notes.md:
+with five corrections and two added structure checks, each backed by a
+measurement recorded in notes.md:
 
   1. The Dappled Forest box is rebuilt from the biome's own description rather
      than the plains-replacement theory. The erosion floor is gone.
@@ -12,6 +13,10 @@ with four corrections, each backed by a measurement recorded in notes.md:
   3. Four conditions that filter nothing are dropped. Two of them are provably
      redundant, not merely weak.
   4. "Open terrain" uses limex for the intent it states.
+  5. The regional-variety climate boxes become one F_BIOME_SAMPLE presence
+     check per biome family, so each names what it actually requires.
+  6. Swamp hut and woodland mansion checks are added, at radii that match how
+     those structures actually generate.
 
 It is a separate link rather than an edit to narrow_dappled_forest_structures.py
 so both remain reproducible: the structures sessions still regenerate byte for
@@ -33,6 +38,7 @@ from narrow_dappled_forest_archipelago import build_archipelago_lines  # noqa: E
 
 from narrow_dappled_forest_structures import (  # noqa: E402
     build_structure_conditions,
+    build_structure_template,
     write_session,
     SAVE_DAPPLED_NEAR,
     SEARCH_BLOCKS,
@@ -43,6 +49,8 @@ from narrow_dappled_forest_structures import (  # noqa: E402
 )
 
 from update_starter_session import (  # noqa: E402
+    F_HUT,
+    F_MANSION,
     build_biome_sample_template,
     set_biome_mask,
     decode_condition,
@@ -166,11 +174,15 @@ DROP_LABELS = {
 # hanging off it.
 ROOT_ORDER = [
     "Central sea coverage",     # 0.35 ms,  2.5% -- by far the best value
+    "Woodland mansion",         # 0.03 ms, ~50% -- essentially free
+    "Swamp hut",                # 0.21 ms, ~35%
     "Spawn anchor",             # 2.34 ms, unlocks the spawn-relative group
-    "Swamp present",            # 2.80 ms, 54.0% -- the gate that actually gets swamps
+    # One gate per biome family, rarest first so the cheap rejections happen early.
+    "Badlands biomes",          # 2.42 ms, 34.5% -- rarest, and in tension with Snowy
+    "Swamp present",            # 2.69 ms, 54.0%
+    "Bamboo jungle",            # 3.04 ms, 55.0%
     "Taiga biomes",             # 1.28 ms, 82.5%
-    "Hot/dry biomes",           # 1.25 ms, 84.5%
-    "Hot/wet biomes",           # 1.09 ms, 89.5%
+    "Savanna biomes",           # 1.34 ms, 84.0%
     "Snowy biomes",             # 8.43 ms, 63.0%
     "Dappled Forest climate",   # 18.63 ms, 93.5% -- states the intent, filters little
     "Pale Garden present",      # 30.15 ms, 41.5%
@@ -228,68 +240,81 @@ VILLAGE_ORDER = ["Dappled near village", "Stronghold near village"]
 OPEN_TERRAIN_WEIRD = 6000
 
 # ---------------------------------------------------------------------------
-# 5. Swamps -- an actual check instead of a marginal one
+# 5. One presence check per biome family
 # ---------------------------------------------------------------------------
-# "Hot/wet climate" is the gate that was supposed to deliver swamps. It does not:
-# it passes 76.0% of seeds while only 30.0% have a column satisfying all four of
-# its constraints simultaneously, and 66.5% of all seeds have a swamp or mangrove
-# cluster regardless -- so it barely beats chance. (Where its box *does* co-locate
-# it lands correctly: mangrove_swamp 55%, swamp 19%, jungle_edge 9%, jungle 8%,
-# bamboo_jungle 4%. The box is aimed right; it just is not binding.)
+# The regional-variety requirements were originally three climate boxes --
+# Hot/wet, Hot/dry, Taiga -- each asking that a climate *family* exist somewhere
+# in the region. Two problems with that, both measured:
 #
-# F_BIOME_SAMPLE is the tool for this. It takes a biome *set*, so one condition
-# covers swamp and mangrove together -- F_BIOME_CENTER matches a single id and
-# would need an F_LOGIC_OR node for the pair -- and its Monte-Carlo estimate
-# aborts early, so it costs 2.5 ms against 48.4 ms for the equivalent centre scan.
+#   a) As climate boxes they were lossy, not merely weak. F_CLIMATE_NOISE checks
+#      each parameter's range over the box independently, so the constraints need
+#      not hold at the same place. Hot/wet passed 76.0% of seeds while rejecting
+#      20.5% of seeds that demonstrably had the jungles and swamps.
 #
-# Measured over 200 seeds, against ground truth (a swamp or mangrove cluster of
-# >= 128 cells somewhere in the box):
+#   b) A family gate is satisfied by any one member. "Hot/dry" was true of a world
+#      with savanna and no badlands; "Hot/wet" was true of one with jungle and no
+#      swamp. Nothing in the stack was actually asking for a swamp.
 #
-#   coverage >= 0.2%   passes 54.0%   2.80 ms   agrees with ground truth 87.5%
-#   coverage >= 0.3%   passes 49.5%   2.62 ms   agrees 83.0%
-#   coverage >= 0.5%   passes 43.5%   2.50 ms   agrees 77.0%
-#   coverage >= 1.0%   passes 30.5%   2.12 ms   agrees 64.0%
+# So each family is now its own F_BIOME_SAMPLE gate over the biome set it names.
+# F_BIOME_SAMPLE takes a set, so one condition covers a biome and its variants,
+# and its Monte-Carlo estimate aborts early, which makes a *failing* seed -- the
+# common case -- cheap. Measured against ground truth (a cluster of >= 128 cells
+# somewhere in the box), 0.2% coverage tracks "this family really is here" most
+# closely: 87.5% agreement, against 77.0% at 0.5% and 64.0% at 1.0%. Higher
+# thresholds drift toward "this family covers a large share of the map" and start
+# rejecting worlds that have a perfectly good swamp or savanna.
 #
-# 0.2% is used because it tracks "a real swamp cluster exists" most closely.
-# Higher thresholds drift away from that: they start rejecting worlds that do have
-# a good swamp, just not a large *share* of the region. Note the gate measures a
-# share of the area, not one contiguous patch. If you specifically want one large
-# swamp, F_BIOME_CENTER on swamp (id 6) with biomeSize 128 passes 53.5% at
-# 48.4 ms -- 19x the cost, and it cannot cover mangrove in the same condition.
+# 0.2% of a 3584x3584 area is roughly 25,700 blocks^2 -- a 160x160 square's worth,
+# scattered anywhere in the region.
 #
-# "Hot/wet climate" is kept: with this gate carrying the swamps, what it still
-# contributes is the jungle half of its box. Dropping it saves 12.6 ms/seed.
-SWAMP_BIOMES = [
-    6,    # swamp
-    184,  # mangrove_swamp
-]
-SWAMP_COVERAGE = 0.002
-SWAMP_CONFIDENCE = 0.90
-SWAMP_HALF = 1792
-SAVE_SWAMP = 29
+# Cost of splitting: +0.22 ms/seed for the block (3.73 -> 3.95 ms, short-circuit,
+# rarest gate first), which is nothing. Cost in throughput: real. Of the 63 seeds
+# found under the three-gate version, all 63 have swamp and savanna, 58.7% have
+# bamboo jungle, and only 20.6% have badlands -- 9.5% have all four. Expect the
+# hit rate to fall from about 1 in 624k seeds to about 1 in 6.5M.
+#
+# Badlands is the binding constraint and the reason, and it is structural rather
+# than a tuning mistake: badlands needs temperature >= 5500, the hottest band,
+# while the Snowy gate needs <= -4500, the coldest, both inside the same 3584-block
+# box. Badlands is present in 59.5% of seeds without a snowy region and only 19.8%
+# of seeds with one. Lowering its coverage does not help -- at 0.1% it only moves
+# to 22.2%, because in these worlds the badlands are absent, not small.
+#
+# Dropping the Badlands gate restores roughly 0.59x of the original throughput;
+# dropping Bamboo jungle as well restores essentially all of it.
+# ---------------------------------------------------------------------------
+# 6. Swamp hut and woodland mansion
+# ---------------------------------------------------------------------------
+# Both are plain structure presence checks, and both are among the best-value
+# gates in the stack: 0.21 ms and 0.03 ms, for pass rates in the 30-55% range.
+#
+# The search radius is the whole decision. Measured conditional on gates the
+# stack already enforces (swamp coverage for huts, since huts only generate in
+# swamp; Pale Garden presence for mansions, since mansions only generate in dark
+# forest and pale garden is carved out of it):
+#
+#   swamp hut  +/-1792 | swamp        33.3%      mansion +/-1792 | pale garden  21.7%
+#   swamp hut  +/-2560 | swamp        56.5%      mansion +/-2560 | pale garden  32.5%
+#                                                mansion +/-4096 | pale garden  54.2%
+#
+# Keeping both inside the +/-1792 central box would cost roughly 14x throughput
+# (about 1 hit in 90M seeds). The wider radii cost 3.4x instead: jointly 29.5%,
+# so about 1 in 22M.
+#
+# The wider boxes are also the more honest framing. Every other condition here
+# describes the central map, but a mansion is an expedition target by design --
+# they generate rarely and far apart -- so +/-4096 (a ~4 km trek at the corner)
+# matches how the structure actually works rather than forcing it next door.
+# Huts get +/-2560 for the same reason: swamps outside the central box still have
+# huts worth visiting.
+#
+# Note this means these two conditions look *outside* the region every other gate
+# examines. Narrow them to VARIETY_HALF if you want everything in one map.
+HUT_HALF = 2560
+MANSION_HALF = 4096
+SAVE_HUT = 34
+SAVE_MANSION = 35
 
-# ---------------------------------------------------------------------------
-# 6. The three regional-variety gates, as biome checks
-# ---------------------------------------------------------------------------
-# Hot/wet, Hot/dry and Taiga are diversity gates: they ask that the region
-# contain a climate family, not one biome. Written as climate boxes they have the
-# same marginal-independence problem as everything else -- and for a diversity
-# requirement that failure mode is worse than weak, it is *lossy*. Measured over
-# 200 seeds, "gate rejects" counts seeds where the biomes are demonstrably
-# present but the climate gate says no:
-#
-#            climate gate (limok)     biome sample (>=0.2%)   gate rejects
-#   Hot/wet   76.0%   12.41 ms         89.5%    1.09 ms          20.5%
-#   Hot/dry   90.0%    2.46 ms         84.5%    1.25 ms           2.5%
-#   Taiga     93.5%   13.44 ms         82.5%    1.28 ms           0.0%
-#
-# Hot/wet was discarding one world in five that actually had the jungles and
-# swamps. Replacing all three with F_BIOME_SAMPLE over the corresponding biome
-# set makes each gate mean what its label says, stops the false rejections, and
-# costs a tenth as much for Hot/wet and Taiga.
-#
-# Swamp present stays separate: the Hot/wet family gate is satisfied by jungle
-# alone, so it does not guarantee a swamp.
 VARIETY_COVERAGE = 0.002
 VARIETY_CONFIDENCE = 0.90
 VARIETY_HALF = 1792
@@ -299,28 +324,29 @@ VARIETY_HALF = 1792
 # 165, old_growth_pine_taiga 32, old_growth_spruce_taiga 160.
 #
 # Every id here was checked against getAvailableBiomes(MC_1_21_WD): having an id
-# in biomes.h is not the same as generating. badlands_plateau (39) was in this set
-# and had to come out -- it is a pre-1.18 biome that still has an id but no longer
-# generates, and the viewer refuses to run a condition containing one
-# ("Biome condition with ID [31] includes 1 biome that does not generate").
+# in biomes.h is not the same as generating. badlands_plateau (39) was in the
+# badlands set and had to come out -- it is a pre-1.18 biome that still has an id
+# but no longer generates, and the viewer refuses to run a condition containing
+# one ("Biome condition with ID [31] includes 1 biome that does not generate").
 # Note also that id 38 is wooded_badlands in 1.18+; wooded_badlands_plateau is
 # just the legacy alias for the same id, and it does generate.
 VARIETY_SETS = {
-    "Hot/wet biomes": (30, [
+    "Swamp present": (29, [
         6,    # swamp
         184,  # mangrove_swamp
-        21,   # jungle
-        23,   # sparse_jungle (jungle_edge)
+    ]),
+    "Bamboo jungle": (30, [
         168,  # bamboo_jungle
     ]),
-    "Hot/dry biomes": (31, [
+    "Savanna biomes": (31, [
         35,   # savanna
         36,   # savanna_plateau
         163,  # windswept_savanna
+    ]),
+    "Badlands biomes": (33, [
         37,   # badlands
         38,   # wooded_badlands
         165,  # eroded_badlands
-        2,    # desert
     ]),
     "Taiga biomes": (32, [
         5,    # taiga
@@ -329,8 +355,14 @@ VARIETY_SETS = {
     ]),
 }
 
-# Seeds already collected, including the five that survived the structures review.
+# Seeds already collected. found-pre-split.txt holds the 63 found by the
+# three-gate version of this search (commit fe62110); its session file is reset
+# on every regeneration, so those results are kept as an explicit input instead
+# of being recoverable only from git. Six of the 63 pass the split gates -- the
+# review pass is what re-checks them.
 KNOWN_SEED_SOURCES = [
+    DATA_DIR / "found-pre-split.txt",
+    SESSIONS_DIR / "dappled-forest-tuned-hunt.session",
     SESSIONS_DIR / "dappled-forest-structures-hunt.session",
     SESSIONS_DIR / "dappled-forest-structures.session",
     SESSIONS_DIR / "dappled-forest-archipelago.session",
@@ -363,21 +395,18 @@ def retune_open_terrain(condition) -> None:
     condition.limex[NP_WEIRDNESS][1] = OPEN_TERRAIN_WEIRD
 
 
-def build_swamp_presence(base):
-    condition = build_biome_sample_template(
+def build_structure_presence(base, label, save, ftype, half):
+    condition = build_structure_template(
         base=base,
-        label="Swamp present",
-        save=SAVE_SWAMP,
+        label=label,
+        save=save,
         relative=0,
+        ftype=ftype,
     )
-    condition.x1 = -SWAMP_HALF
-    condition.z1 = -SWAMP_HALF
-    condition.x2 = SWAMP_HALF
-    condition.z2 = SWAMP_HALF
-    set_biome_mask(condition, SWAMP_BIOMES)
-    condition.converage = SWAMP_COVERAGE
-    condition.confidence = SWAMP_CONFIDENCE
-    condition.count = 0
+    condition.x1 = -half
+    condition.z1 = -half
+    condition.x2 = half
+    condition.z2 = half
     return condition
 
 
@@ -409,7 +438,10 @@ def build_tuned_lines() -> list[str]:
     base = decode_condition(lines[cond_indexes[0]])
     conditions = [decode_condition(lines[idx]) for idx in cond_indexes]
     conditions.extend(build_structure_conditions(base))
-    conditions.append(build_swamp_presence(base))
+    conditions.append(build_structure_presence(base, "Swamp hut", SAVE_HUT, F_HUT, HUT_HALF))
+    conditions.append(
+        build_structure_presence(base, "Woodland mansion", SAVE_MANSION, F_MANSION, MANSION_HALF)
+    )
     for label, (save, biome_ids) in VARIETY_SETS.items():
         conditions.append(build_variety_presence(base, label, save, biome_ids))
 
