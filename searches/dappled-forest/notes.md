@@ -509,6 +509,71 @@ the five that survived the structures review — then
 `dappled-forest-tuned-hunt.session` (`#Search: 1`) continues into fresh seed
 space. The same Flatpak caveat about `#List64` applies.
 
+## Geography scoring (`analysis/ocean_connectivity`)
+
+Some geographic qualities cannot be expressed as viewer conditions at all. The
+filters in `search.cpp` can require that a biome exists, that a biome set covers
+a fraction of an area, or that a structure generates — but **nothing measures
+connectivity**. `F_BIOME_CENTER` does run a connected-component pass, but only
+over a *single* biome id, and it reports cluster centres rather than how much of
+the biome sits in its largest component. A sea spans ocean, deep ocean, cold
+ocean and the rest, so single-id clustering cannot answer "is this one navigable
+ocean or several ponds".
+
+So this runs as a **scoring pass over results**, not as a gate. It generates the
+biome map once per seed at 1:4 over a 4096×4096 home region and flood-fills it,
+which takes about a second — fine for ranking a results list, hopeless as a
+filter.
+
+```
+cd searches/dappled-forest/analysis && make
+grep -E '^-?[0-9]+$' ../sessions/dappled-forest-tuned-hunt.session \
+  | ./ocean_connectivity > ../results/tuned-hunt-geography.tsv
+```
+
+`make` clones cubiomes into a gitignored directory, pinned to `e61f905` — the
+same commit the session notes are verified against. Nothing else in this repo
+needs a compiler, so the dependency stays local to this tool.
+
+| column | meaning |
+| :-- | :-- |
+| `water_pct` | ocean-family share of the ±2048 home region |
+| `ocean_conn_pct` | share of that ocean in its single largest connected component — 100% is one sea, low values mean scattered ponds |
+| `spawn_biome` | biome at world spawn |
+| `plains_pct` | plains-family share within ±256 of spawn |
+| `local_water_pct` | ocean-family share within ±256 of spawn |
+| `island_blocks` | area of the connected landmass containing spawn |
+| `island_open` | 1 if that landmass reaches the edge of the sampled region — i.e. it is *not* demonstrably framed by water within 4 km |
+
+### What the first run showed
+
+Scored against the target grammar — an open green plains identity at spawn,
+53–57% water across the home map, >96% ocean connectivity, a home landform
+framed by water — only **1 of the 16** hits qualifies (`8609475112648835277`:
+56.3% water, 99.1% connectivity, sunflower plains at spawn). Two have a
+plains-family spawn, one is in the water band, three exceed 96% connectivity.
+These criteria are close to orthogonal to what the search currently asks.
+
+Two findings worth acting on eventually:
+
+**The spawn is never on a bounded island.** `island_open` is 1 for all 16, and
+the spawn landmass runs 4.5–10.6 million blocks² — 27–63% of the entire 4096×4096
+region. The four `Spawn moat` gates require ocean *continentalness* within 640
+blocks in each cardinal direction, which a coastal dip satisfies without a
+coastline, and the diagonals are uncovered besides. The moats bound the spawn
+land geometrically; they do not make it an island, and now there is a measurement
+saying so rather than a caveat saying it might not.
+
+**The archipelago gates are not producing archipelagos at map scale.** They
+measure ocean and land *coverage* over ±768, which the existing notes already
+flag as a proxy for fragmentation that "cannot prove a specific island count".
+The connected-component numbers show the proxy is not delivering: the land is one
+mass at the 4 km scale, with water around it rather than through it.
+
+Neither is expressible as a viewer condition — both need connectivity — so the
+practical route is to keep them as scoring columns and rank results, or to filter
+the results list on them before spending time in-game.
+
 ## Regenerate
 
 Base Dappled Forest proxy:

@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+
+# built by searches/dappled-forest/analysis/Makefile
+searches/**/analysis/cubiomes/
+searches/**/analysis/ocean_connectivity

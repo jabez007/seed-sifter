@@ -21,6 +21,7 @@ worldgen and Cubiomes search strategy.
 - [`searches/viewer-search.session`](./searches/viewer-search.session) - starter `cubiomes-viewer` session with reusable default filters
 - [`searches/scripts/update_starter_session.py`](./searches/scripts/update_starter_session.py) - regenerates the starter session from a hard-coded condition set
 - [`searches/dappled-forest/`](./searches/dappled-forest/) - the Dappled Forest search: a chain of four sessions (base proxy, snowy, archipelago, village + stronghold, retuned + cost-ordered) derived from the starter, with [`notes.md`](./searches/dappled-forest/notes.md) covering the reasoning and dials for each link
+- [`searches/dappled-forest/analysis/`](./searches/dappled-forest/analysis/) - `ocean_connectivity`, a scoring pass over search results for the geographic qualities cubiomes-viewer cannot express as conditions (ocean connectivity, spawn landmass, water share)
 
 ## Intended Search Layout
 
@@ -134,3 +135,7 @@ later.
 CSV files under `searches/<search-name>/data/` are tracked with Git LFS via
 [`.gitattributes`](./.gitattributes). Run `git lfs install` once on a machine
 before cloning or committing LFS-backed data.
+
+The one compiled tool in the repo, `searches/dappled-forest/analysis/`, clones
+cubiomes itself on first `make` into a gitignored directory. Nothing else here
+needs a compiler.
